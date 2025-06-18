@@ -381,7 +381,7 @@ const App: React.FC = () => {
           ? `background-color: ${task.color}; color: white; font-weight: bold;`
           : "";
         html += `
-      <td style="padding: 8px; text-align: center; ${cellStyle}">${cellContent}</td>`;
+      <td style="padding: 8px; text-align: center; ${cellStyle}"></td>`;
       });
       html += `
     </tr>\n`;

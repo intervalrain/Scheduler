@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 interface TooltipProps {
   children: React.ReactNode;
@@ -8,81 +9,120 @@ interface TooltipProps {
 
 export const Tooltip: React.FC<TooltipProps> = ({ children, content, side = 'right' }) => {
   const [isVisible, setIsVisible] = React.useState(false);
+  const [position, setPosition] = React.useState({ top: 0, left: 0 });
+  const [hideTimeout, setHideTimeout] = React.useState<NodeJS.Timeout | null>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const getPositionStyle = (side: string) => {
-    switch (side) {
-      case 'top':
-        return {
-          bottom: '100%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          marginBottom: '8px'
-        };
-      case 'right':
-        return {
-          left: '100%',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          marginLeft: '8px'
-        };
-      case 'bottom':
-        return {
-          top: '100%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          marginTop: '8px'
-        };
-      case 'left':
-        return {
-          right: '100%',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          marginRight: '8px'
-        };
-      default:
-        return {
-          left: '100%',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          marginLeft: '8px'
-        };
+  const updatePosition = () => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      console.log('Container rect:', rect);
+      
+      let top = 0;
+      let left = 0;
+      
+      switch (side) {
+        case 'top':
+          top = rect.top - 8;
+          left = rect.left + rect.width / 2;
+          break;
+        case 'bottom':
+          top = rect.bottom + 8;
+          left = rect.left + rect.width / 2;
+          break;
+        case 'left':
+          top = rect.top + rect.height / 2;
+          left = rect.left - 8;
+          break;
+        case 'right':
+        default:
+          top = rect.top + rect.height / 2;
+          left = rect.right + 8;
+          break;
+      }
+      
+      setPosition({ top, left });
     }
   };
 
-  console.log('Tooltip render:', { isVisible, content });
+  const showTooltip = () => {
+    console.log('Showing tooltip');
+    if (hideTimeout) {
+      clearTimeout(hideTimeout);
+      setHideTimeout(null);
+    }
+    updatePosition();
+    setIsVisible(true);
+  };
 
-  return (
+  const hideTooltip = () => {
+    console.log('Starting hide tooltip countdown');
+    const timeout = setTimeout(() => {
+      console.log('Hiding tooltip');
+      setIsVisible(false);
+    }, 150);
+    setHideTimeout(timeout);
+  };
+
+  const cancelHide = () => {
+    console.log('Canceling tooltip hide');
+    if (hideTimeout) {
+      clearTimeout(hideTimeout);
+      setHideTimeout(null);
+    }
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (hideTimeout) {
+        clearTimeout(hideTimeout);
+      }
+    };
+  }, [hideTimeout]);
+
+  console.log('Tooltip render:', { isVisible, hasContent: !!content });
+
+  const tooltipContent = isVisible ? (
     <div 
-      className="relative inline-block"
-      onMouseEnter={() => {
-        console.log('Mouse enter tooltip');
-        setIsVisible(true);
-      }}
-      onMouseLeave={() => {
-        console.log('Mouse leave tooltip');
-        setIsVisible(false);
+      onMouseEnter={cancelHide}
+      onMouseLeave={hideTooltip}
+      style={{
+        position: 'fixed',
+        top: position.top,
+        left: position.left,
+        transform: 
+          side === 'top' ? 'translate(-50%, -100%)' :
+          side === 'bottom' ? 'translate(-50%, 0%)' :
+          side === 'left' ? 'translate(-100%, -50%)' :
+          'translate(0%, -50%)',
+        zIndex: 999999,
+        backgroundColor: 'white',
+        border: '1px solid #e5e7eb',
+        borderRadius: '8px',
+        padding: '12px',
+        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        minWidth: '200px',
+        maxWidth: '320px',
+        fontSize: '14px',
+        color: 'black',
+        pointerEvents: 'auto'
       }}
     >
-      {children}
-      {isVisible && (
-        <div 
-          className="pointer-events-none"
-          style={{
-            position: 'absolute',
-            zIndex: 9999,
-            backgroundColor: 'white',
-            border: '1px solid #ccc',
-            borderRadius: '8px',
-            padding: '12px',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-            maxWidth: '300px',
-            fontSize: '14px',
-            ...getPositionStyle(side)
-          }}
-        >
-          {content}
-        </div>
-      )}
+      {content}
     </div>
+  ) : null;
+
+  return (
+    <>
+      <div 
+        ref={containerRef}
+        className="relative inline-block"
+        onMouseEnter={showTooltip}
+        onMouseLeave={hideTooltip}
+      >
+        {children}
+      </div>
+      {tooltipContent && createPortal(tooltipContent, document.body)}
+    </>
   );
 };
