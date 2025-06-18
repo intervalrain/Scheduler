@@ -77,7 +77,11 @@ const App: React.FC = () => {
   };
 
   const handleTaskSelect = (task: TaskType): void => {
-    setSelectedTask(task);
+    if (selectedTask?.id === task.id) {
+      setSelectedTask(null);
+    } else {
+      setSelectedTask(task);
+    }
   };
 
   const handleMouseDown = (day: string, time: string): void => {
@@ -450,6 +454,7 @@ const App: React.FC = () => {
           }}
           onConfirm={handleModalConfirm}
           taskTypes={taskTypes}
+          preselectedTaskType={selectedTask?.id}
         />
       </div>
     </div>

@@ -10,22 +10,24 @@ interface ModalProps {
   onClose: () => void;
   onConfirm: (taskType: string, taskName: string) => void;
   taskTypes: TaskType[];
+  preselectedTaskType?: string;
 }
 
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, onConfirm, taskTypes }) => {
+export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, onConfirm, taskTypes, preselectedTaskType }) => {
   const [selectedTaskType, setSelectedTaskType] = React.useState<string>('');
   const [taskName, setTaskName] = React.useState<string>('');
 
   React.useEffect(() => {
     if (isOpen) {
-      setSelectedTaskType('');
+      setSelectedTaskType(preselectedTaskType || '');
       setTaskName('');
     }
-  }, [isOpen]);
+  }, [isOpen, preselectedTaskType]);
 
   const handleConfirm = () => {
-    if (selectedTaskType && taskName.trim()) {
-      onConfirm(selectedTaskType, taskName.trim());
+    if (selectedTaskType) {
+      const finalTaskName = taskName.trim() || taskTypes.find(t => t.id === selectedTaskType)?.name || '';
+      onConfirm(selectedTaskType, finalTaskName);
       onClose();
     }
   };
@@ -78,7 +80,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, onConfirm, taskTy
         </div>
         
         <div className="flex gap-2 mt-6">
-          <Button onClick={handleConfirm} disabled={!selectedTaskType || !taskName.trim()}>
+          <Button onClick={handleConfirm} disabled={!selectedTaskType}>
             確認
           </Button>
           <Button variant="outline" onClick={onClose}>
