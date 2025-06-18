@@ -54,6 +54,10 @@ const App: React.FC = () => {
     endIndex: number;
     day: string;
   } | null>(null);
+  const [editingTask, setEditingTask] = useState<{
+    key: string;
+    name: string;
+  } | null>(null);
 
   const [taskTypes, setTaskTypes] = useState<TaskType[]>(() => {
     const saved = localStorage.getItem("taskTypes");
@@ -305,6 +309,35 @@ const App: React.FC = () => {
     const newSchedule: Schedule = { ...schedule };
     delete newSchedule[`${day}-${time}`];
     setSchedule(newSchedule);
+  };
+
+  const handleTaskClick = (day: string, time: string): void => {
+    const key = `${day}-${time}`;
+    const task = schedule[key];
+    if (task) {
+      setEditingTask({
+        key,
+        name: task.name
+      });
+    }
+  };
+
+  const saveTaskEdit = (): void => {
+    if (editingTask) {
+      const newSchedule = { ...schedule };
+      if (newSchedule[editingTask.key]) {
+        newSchedule[editingTask.key] = {
+          ...newSchedule[editingTask.key],
+          name: editingTask.name
+        };
+        setSchedule(newSchedule);
+      }
+      setEditingTask(null);
+    }
+  };
+
+  const cancelTaskEdit = (): void => {
+    setEditingTask(null);
   };
 
   const getDragSelection = (): string[] => {
@@ -821,16 +854,52 @@ const App: React.FC = () => {
                               ${isInDragSelection ? "bg-primary/20" : ""}
                               ${isOccupied ? "opacity-90" : "hover:bg-muted/50"}
                             `}
-                            onMouseDown={() => handleMouseDown(day, time)}
+                            onMouseDown={() => !task && handleMouseDown(day, time)}
                             onMouseEnter={() => handleMouseEnter(day, time)}
                             onDoubleClick={() => task && clearSlot(day, time)}
+                            onClick={() => task && handleTaskClick(day, time)}
                           >
-                            {task && (
+                            {task && editingTask?.key === cellKey ? (
+                              <div className="bg-white rounded text-sm h-full flex flex-col justify-center relative border-2 border-blue-400 shadow-md">
+                                <div className="text-center text-gray-600 text-xs mb-1 px-2">
+                                  {taskTypes.find(t => t.id === task.id)?.name || task.id}
+                                </div>
+                                <div className="px-2">
+                                  <input
+                                    value={editingTask.name}
+                                    onChange={(e) => setEditingTask({
+                                      ...editingTask,
+                                      name: e.target.value
+                                    })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        saveTaskEdit();
+                                      } else if (e.key === 'Escape') {
+                                        cancelTaskEdit();
+                                      }
+                                    }}
+                                    onBlur={saveTaskEdit}
+                                    autoFocus
+                                    placeholder="任務名稱"
+                                    className="w-full text-xs text-gray-800 border-0 bg-transparent focus:outline-none text-center placeholder-gray-400"
+                                  />
+                                </div>
+                              </div>
+                            ) : task ? (
                               <div
                                 style={{ backgroundColor: task.color }}
-                                className="text-white p-2 rounded text-sm font-medium h-full flex items-center justify-center relative group"
+                                className="text-white p-1 rounded text-sm h-full flex flex-col justify-center relative group"
                               >
-                                <span className="flex-1">{task.name}</span>
+                                <div className="text-center">
+                                  <div className="font-medium text-xs leading-tight">
+                                    {taskTypes.find(t => t.id === task.id)?.name || task.id}
+                                  </div>
+                                  {task.name && (
+                                    <div className="text-xs opacity-90 leading-tight mt-0.5">
+                                      {task.name}
+                                    </div>
+                                  )}
+                                </div>
                                 <Button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -843,7 +912,7 @@ const App: React.FC = () => {
                                   <X className="w-3 h-3" />
                                 </Button>
                               </div>
-                            )}
+                            ) : null}
                           </td>
                         );
                       })}
