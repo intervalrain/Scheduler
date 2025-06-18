@@ -127,19 +127,19 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         if (currentHistoryIndex >= 0 && history.length > 0) {
           const previousSchedule = history[currentHistoryIndex];
           setSchedule(previousSchedule);
-          setCurrentHistoryIndex(prev => prev - 1);
+          setCurrentHistoryIndex((prev) => prev - 1);
         }
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [currentHistoryIndex, history]);
 
@@ -161,6 +161,16 @@ const App: React.FC = () => {
     const totalSlots = timeSlots.length * days.length;
     const occupiedSlots = Object.keys(schedule).length;
     return (totalSlots - occupiedSlots) * timeConfig.duration;
+  };
+
+  const calculateDevelopHours = (): number => {
+    let count = 0;
+    Object.values(schedule).forEach((task) => {
+      if (task.id === "development") {
+        count++;
+      }
+    });
+    return count * timeConfig.duration;
   };
 
   const convertScheduleForNewDuration = (newDuration: number): Schedule => {
@@ -253,7 +263,7 @@ const App: React.FC = () => {
     if (newHistory.length > 50) {
       newHistory.shift();
     } else {
-      setCurrentHistoryIndex(prev => prev + 1);
+      setCurrentHistoryIndex((prev) => prev + 1);
     }
     setHistory(newHistory);
   };
@@ -263,14 +273,13 @@ const App: React.FC = () => {
     setSchedule(newSchedule);
   };
 
-
   const removeTaskType = (taskId: string): void => {
-    setTaskTypes(taskTypes.filter(task => task.id !== taskId));
+    setTaskTypes(taskTypes.filter((task) => task.id !== taskId));
     if (selectedTask?.id === taskId) {
       setSelectedTask(null);
     }
     const newSchedule = { ...schedule };
-    Object.keys(newSchedule).forEach(key => {
+    Object.keys(newSchedule).forEach((key) => {
       if (newSchedule[key].id === taskId) {
         delete newSchedule[key];
       }
@@ -354,7 +363,7 @@ const App: React.FC = () => {
     if (task) {
       setEditingTask({
         key,
-        name: task.name
+        name: task.name,
       });
     }
   };
@@ -365,7 +374,7 @@ const App: React.FC = () => {
       if (newSchedule[editingTask.key]) {
         newSchedule[editingTask.key] = {
           ...newSchedule[editingTask.key],
-          name: editingTask.name
+          name: editingTask.name,
         };
         updateSchedule(newSchedule);
       }
@@ -430,7 +439,7 @@ const App: React.FC = () => {
   const generateHTML = (): string => {
     let html = `<table border="1" style="border-collapse: collapse; width: 100%;">
   <thead>
-    <tr style="background-color: #f5f5f5;">
+    <tr>
       <th style="padding: 8px; text-align: center;">時間</th>
       <th style="padding: 8px; text-align: center;">Wednesday</th>
       <th style="padding: 8px; text-align: center;">Thursday</th>
@@ -451,7 +460,7 @@ const App: React.FC = () => {
           ? `background-color: ${task.color}; color: white; font-weight: bold;`
           : "";
         html += `
-      <td style="padding: 8px; text-align: center; ${cellStyle}"></td>`;
+      <td style="padding: 8px; text-align: center; ${cellStyle}">${cellContent}</td>`;
       });
       html += `
     </tr>\n`;
@@ -686,6 +695,19 @@ const App: React.FC = () => {
                 </CardContent>
               </Card>
 
+              <Card className="mb-4">
+                <CardContent className="p-4">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-primary">
+                      {calculateDevelopHours()}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      開發時間 (小時)
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card className="mb-6">
                 <CardHeader>
                   <CardTitle className="text-lg">時間設定</CardTitle>
@@ -891,7 +913,9 @@ const App: React.FC = () => {
                               ${isInDragSelection ? "bg-primary/20" : ""}
                               ${isOccupied ? "opacity-90" : "hover:bg-muted/50"}
                             `}
-                            onMouseDown={() => !task && handleMouseDown(day, time)}
+                            onMouseDown={() =>
+                              !task && handleMouseDown(day, time)
+                            }
                             onMouseEnter={() => handleMouseEnter(day, time)}
                             onDoubleClick={() => task && clearSlot(day, time)}
                             onClick={() => task && handleTaskClick(day, time)}
@@ -899,19 +923,22 @@ const App: React.FC = () => {
                             {task && editingTask?.key === cellKey ? (
                               <div className="bg-white rounded text-sm h-full flex flex-col justify-center relative border-2 border-blue-400 shadow-md">
                                 <div className="text-center text-gray-600 text-xs mb-1 px-2">
-                                  {taskTypes.find(t => t.id === task.id)?.name || task.id}
+                                  {taskTypes.find((t) => t.id === task.id)
+                                    ?.name || task.id}
                                 </div>
                                 <div className="px-2">
                                   <input
                                     value={editingTask.name}
-                                    onChange={(e) => setEditingTask({
-                                      ...editingTask,
-                                      name: e.target.value
-                                    })}
+                                    onChange={(e) =>
+                                      setEditingTask({
+                                        ...editingTask,
+                                        name: e.target.value,
+                                      })
+                                    }
                                     onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
+                                      if (e.key === "Enter") {
                                         saveTaskEdit();
-                                      } else if (e.key === 'Escape') {
+                                      } else if (e.key === "Escape") {
                                         cancelTaskEdit();
                                       }
                                     }}
@@ -929,7 +956,8 @@ const App: React.FC = () => {
                               >
                                 <div className="text-center">
                                   <div className="font-medium text-xs leading-tight">
-                                    {taskTypes.find(t => t.id === task.id)?.name || task.id}
+                                    {taskTypes.find((t) => t.id === task.id)
+                                      ?.name || task.id}
                                   </div>
                                   {task.name && (
                                     <div className="text-xs opacity-90 leading-tight mt-0.5">
