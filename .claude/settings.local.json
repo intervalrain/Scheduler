@@ -10,7 +10,9 @@
       "Bash(npx shadcn@latest init:*)",
       "Bash(npx tailwindcss init:*)",
       "Bash(mv:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run:*)"
     ],
     "deny": []
   }
