@@ -58,6 +58,8 @@ const App: React.FC = () => {
     key: string;
     name: string;
   } | null>(null);
+  const [history, setHistory] = useState<Schedule[]>([]);
+  const [currentHistoryIndex, setCurrentHistoryIndex] = useState<number>(-1);
 
   const [taskTypes, setTaskTypes] = useState<TaskType[]>(() => {
     const saved = localStorage.getItem("taskTypes");
@@ -122,6 +124,24 @@ const App: React.FC = () => {
       localStorage.setItem("schedule", JSON.stringify(schedule));
     }
   }, [schedule]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        if (currentHistoryIndex >= 0 && history.length > 0) {
+          const previousSchedule = history[currentHistoryIndex];
+          setSchedule(previousSchedule);
+          setCurrentHistoryIndex(prev => prev - 1);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [currentHistoryIndex, history]);
 
   useEffect(() => {
     const savedSchedule = localStorage.getItem("schedule");
@@ -202,7 +222,7 @@ const App: React.FC = () => {
     if (newDuration !== timeConfig.duration) {
       const convertedSchedule = convertScheduleForNewDuration(newDuration);
       setTimeConfig((prev) => ({ ...prev, duration: newDuration }));
-      setSchedule(convertedSchedule);
+      updateSchedule(convertedSchedule);
     }
   };
 
@@ -227,6 +247,23 @@ const App: React.FC = () => {
     }
   };
 
+  const saveToHistory = (newSchedule: Schedule): void => {
+    const newHistory = history.slice(0, currentHistoryIndex + 1);
+    newHistory.push({ ...schedule });
+    if (newHistory.length > 50) {
+      newHistory.shift();
+    } else {
+      setCurrentHistoryIndex(prev => prev + 1);
+    }
+    setHistory(newHistory);
+  };
+
+  const updateSchedule = (newSchedule: Schedule): void => {
+    saveToHistory(newSchedule);
+    setSchedule(newSchedule);
+  };
+
+
   const removeTaskType = (taskId: string): void => {
     setTaskTypes(taskTypes.filter(task => task.id !== taskId));
     if (selectedTask?.id === taskId) {
@@ -238,7 +275,7 @@ const App: React.FC = () => {
         delete newSchedule[key];
       }
     });
-    setSchedule(newSchedule);
+    updateSchedule(newSchedule);
   };
 
   const handleTaskSelect = (task: TaskType): void => {
@@ -308,7 +345,7 @@ const App: React.FC = () => {
   const clearSlot = (day: string, time: string): void => {
     const newSchedule: Schedule = { ...schedule };
     delete newSchedule[`${day}-${time}`];
-    setSchedule(newSchedule);
+    updateSchedule(newSchedule);
   };
 
   const handleTaskClick = (day: string, time: string): void => {
@@ -330,7 +367,7 @@ const App: React.FC = () => {
           ...newSchedule[editingTask.key],
           name: editingTask.name
         };
-        setSchedule(newSchedule);
+        updateSchedule(newSchedule);
       }
       setEditingTask(null);
     }
@@ -386,7 +423,7 @@ const App: React.FC = () => {
       }
     }
 
-    setSchedule(newSchedule);
+    updateSchedule(newSchedule);
     setPendingDragData(null);
   };
 
