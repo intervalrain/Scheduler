@@ -5,6 +5,7 @@ import { Textarea } from './components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 import { Copy, Download, Plus, X } from 'lucide-react';
+import { Modal } from './components/ui/modal';
 import type { TaskType, TimeConfig, Schedule, DragState } from './types';
 
 const App: React.FC = () => {
@@ -21,14 +22,15 @@ const App: React.FC = () => {
   const [showAddTask, setShowAddTask] = useState<boolean>(false);
   const [newTaskName, setNewTaskName] = useState<string>('');
   const [newTaskColor, setNewTaskColor] = useState<string>('#3b82f6');
+  const [showModal, setShowModal] = useState<boolean>(false);
+  const [pendingDragData, setPendingDragData] = useState<{startIndex: number; endIndex: number; day: string} | null>(null);
 
   const [taskTypes, setTaskTypes] = useState<TaskType[]>([
-    { id: 'standup', name: '站會', color: '#3b82f6' },
-    { id: 'development', name: 'ABP 開發', color: '#10b981' },
-    { id: 'frontend', name: 'React 前端', color: '#8b5cf6' },
-    { id: 'ml', name: 'TensorFlow', color: '#f97316' },
-    { id: 'meeting', name: '會議', color: '#ef4444' },
-    { id: 'research', name: '技術研究', color: '#eab308' }
+    { id: 'meeting', name: '會議', color: '#3b82f6' },
+    { id: 'development', name: '開發', color: '#10b981' },
+    { id: 'integration', name: '整合', color: '#ef4444' },
+    { id: 'research', name: '技術研究', color: '#eab308' },
+    { id: 'lunch', name: '午休', color: '#f97316' }
   ]);
 
   const days: string[] = ['Wednesday', 'Thursday', 'Friday', 'Monday', 'Tuesday'];
@@ -38,11 +40,6 @@ const App: React.FC = () => {
     let currentTime = timeConfig.startTime;
     
     while (currentTime < timeConfig.endTime) {
-      if (currentTime === 12) {
-        currentTime += timeConfig.duration;
-        continue;
-      }
-      
       const endTime = currentTime + timeConfig.duration;
       const startHour = Math.floor(currentTime);
       const startMin = (currentTime % 1) * 60;
@@ -58,6 +55,12 @@ const App: React.FC = () => {
   };
 
   const timeSlots = generateTimeSlots();
+
+  const calculateRemainingHours = (): number => {
+    const totalSlots = timeSlots.length * days.length;
+    const occupiedSlots = Object.keys(schedule).length;
+    return (totalSlots - occupiedSlots) * timeConfig.duration;
+  };
 
   const addNewTask = (): void => {
     if (newTaskName.trim()) {
@@ -78,7 +81,6 @@ const App: React.FC = () => {
   };
 
   const handleMouseDown = (day: string, time: string): void => {
-    if (!selectedTask) return;
     setIsDragging(true);
     setDragStart({ day, time });
     setDragEnd({ day, time });
@@ -91,33 +93,40 @@ const App: React.FC = () => {
   };
 
   const handleMouseUp = (): void => {
-    if (isDragging && dragStart && dragEnd && selectedTask) {
+    if (isDragging && dragStart && dragEnd) {
       const startIndex = timeSlots.indexOf(dragStart.time);
       const endIndex = timeSlots.indexOf(dragEnd.time);
       const dayIndex = days.indexOf(dragStart.day);
       const endDayIndex = days.indexOf(dragEnd.day);
 
-      if (dayIndex === endDayIndex && startIndex !== -1 && endIndex !== -1) {
+      if (startIndex !== -1 && endIndex !== -1) {
         const minIndex = Math.min(startIndex, endIndex);
         const maxIndex = Math.max(startIndex, endIndex);
+        const minDayIndex = Math.min(dayIndex, endDayIndex);
+        const maxDayIndex = Math.max(dayIndex, endDayIndex);
         
-        const newSchedule: Schedule = { ...schedule };
         let canSchedule = true;
-
-        for (let i = minIndex; i <= maxIndex; i++) {
-          const key = `${dragStart.day}-${timeSlots[i]}`;
-          if (newSchedule[key]) {
-            canSchedule = false;
-            break;
+        
+        for (let dayIdx = minDayIndex; dayIdx <= maxDayIndex; dayIdx++) {
+          for (let timeIdx = minIndex; timeIdx <= maxIndex; timeIdx++) {
+            const key = `${days[dayIdx]}-${timeSlots[timeIdx]}`;
+            if (schedule[key]) {
+              canSchedule = false;
+              break;
+            }
           }
+          if (!canSchedule) break;
         }
 
         if (canSchedule) {
-          for (let i = minIndex; i <= maxIndex; i++) {
-            const key = `${dragStart.day}-${timeSlots[i]}`;
-            newSchedule[key] = { ...selectedTask, isMultiSlot: maxIndex > minIndex };
-          }
-          setSchedule(newSchedule);
+          setPendingDragData({ 
+            startIndex: minIndex, 
+            endIndex: maxIndex, 
+            day: dragStart.day,
+            dayStartIndex: minDayIndex,
+            dayEndIndex: maxDayIndex
+          } as any);
+          setShowModal(true);
         }
       }
     }
@@ -141,50 +150,77 @@ const App: React.FC = () => {
     const dayIndex = days.indexOf(dragStart.day);
     const endDayIndex = days.indexOf(dragEnd.day);
 
-    if (dayIndex !== endDayIndex || startIndex === -1 || endIndex === -1) return [];
+    if (startIndex === -1 || endIndex === -1) return [];
 
     const minIndex = Math.min(startIndex, endIndex);
     const maxIndex = Math.max(startIndex, endIndex);
+    const minDayIndex = Math.min(dayIndex, endDayIndex);
+    const maxDayIndex = Math.max(dayIndex, endDayIndex);
     const selection: string[] = [];
 
-    for (let i = minIndex; i <= maxIndex; i++) {
-      selection.push(`${dragStart.day}-${timeSlots[i]}`);
+    for (let dayIdx = minDayIndex; dayIdx <= maxDayIndex; dayIdx++) {
+      for (let timeIdx = minIndex; timeIdx <= maxIndex; timeIdx++) {
+        selection.push(`${days[dayIdx]}-${timeSlots[timeIdx]}`);
+      }
     }
 
     return selection;
   };
 
-  const generateHTML = (): string => {
-    let html = `|時間|Wednesday|Thursday|Friday|Monday|Tuesday|\n|---|---|---|---|---|---|\n`;
+  const handleModalConfirm = (taskTypeId: string, taskName: string): void => {
+    if (!pendingDragData) return;
     
-    const allSlots: { time: string; hour: number; processed?: boolean }[] = [];
-    timeSlots.forEach(time => {
-      const startHour = parseInt(time.split(':')[0]);
-      allSlots.push({ time, hour: startHour });
-    });
+    const taskType = taskTypes.find(t => t.id === taskTypeId);
+    if (!taskType) return;
     
-    allSlots.sort((a, b) => a.hour - b.hour);
+    const newSchedule: Schedule = { ...schedule };
+    const { startIndex, endIndex, dayStartIndex, dayEndIndex } = pendingDragData as any;
     
-    allSlots.forEach(slot => {
-      if (slot.hour === 12) return;
-      
-      if (slot.hour > 12 && !allSlots.some(s => s.hour === 12 && s.processed)) {
-        html += `|12:00-13:00|🍽️ Lunch Break|🍽️ Lunch Break|🍽️ Lunch Break|🍽️ Lunch Break|🍽️ Lunch Break|\n`;
-        const slot12 = allSlots.find(s => s.hour === 12);
-        if (slot12) slot12.processed = true;
+    for (let dayIdx = dayStartIndex; dayIdx <= dayEndIndex; dayIdx++) {
+      for (let timeIdx = startIndex; timeIdx <= endIndex; timeIdx++) {
+        const key = `${days[dayIdx]}-${timeSlots[timeIdx]}`;
+        newSchedule[key] = { 
+          ...taskType, 
+          name: taskName,
+          isMultiSlot: endIndex > startIndex || dayEndIndex > dayStartIndex 
+        };
       }
-      
-      html += `|${slot.time}|`;
+    }
+    
+    setSchedule(newSchedule);
+    setPendingDragData(null);
+  };
+
+  const generateHTML = (): string => {
+    let html = `<table border="1" style="border-collapse: collapse; width: 100%;">
+  <thead>
+    <tr style="background-color: #f5f5f5;">
+      <th style="padding: 8px; text-align: center;">時間</th>
+      <th style="padding: 8px; text-align: center;">Wednesday</th>
+      <th style="padding: 8px; text-align: center;">Thursday</th>
+      <th style="padding: 8px; text-align: center;">Friday</th>
+      <th style="padding: 8px; text-align: center;">Monday</th>
+      <th style="padding: 8px; text-align: center;">Tuesday</th>
+    </tr>
+  </thead>
+  <tbody>\n`;
+    
+    timeSlots.forEach(time => {
+      html += `    <tr>
+      <td style="padding: 8px; text-align: center; font-weight: bold;">${time}</td>`;
       days.forEach(day => {
-        const task = schedule[`${day}-${slot.time}`];
-        html += `${task ? task.name : ''}|`;
+        const task = schedule[`${day}-${time}`];
+        const cellContent = task ? task.name : '';
+        const cellStyle = task ? `background-color: ${task.color}; color: white; font-weight: bold;` : '';
+        html += `
+      <td style="padding: 8px; text-align: center; ${cellStyle}">${cellContent}</td>`;
       });
-      html += '\n';
+      html += `
+    </tr>\n`;
     });
     
-    if (!allSlots.some(s => s.hour === 12 && s.processed)) {
-      html += `|12:00-13:00|🍽️ Lunch Break|🍽️ Lunch Break|🍽️ Lunch Break|🍽️ Lunch Break|🍽️ Lunch Break|\n`;
-    }
+    html += `  </tbody>
+</table>`;
     
     return html;
   };
@@ -196,6 +232,15 @@ const App: React.FC = () => {
     <div className="flex h-screen bg-background">
       <div className="w-1/3 p-6 bg-card border-r shadow-lg">
         <h2 className="text-2xl font-bold mb-6 text-foreground">行程規劃工具</h2>
+        
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-primary">{calculateRemainingHours()}</p>
+              <p className="text-sm text-muted-foreground">剩餘時間 (小時)</p>
+            </div>
+          </CardContent>
+        </Card>
         
         <Card className="mb-6">
           <CardHeader>
@@ -324,21 +369,8 @@ const App: React.FC = () => {
                   </tr>
                 </thead>
             <tbody onMouseUp={handleMouseUp}>
-              {timeSlots.map((time, index) => {
-                const currentHour = parseInt(time.split(':')[0]);
-                const showLunchBefore = currentHour > 12 && !timeSlots.slice(0, index).some(t => parseInt(t.split(':')[0]) > 12);
-                
-                return (
-                  <React.Fragment key={time}>
-                    {showLunchBefore && (
-                      <tr>
-                        <td className="border border-border p-3 font-medium bg-muted/50">12:00-13:00</td>
-                        <td colSpan={5} className="border border-border p-3 text-center bg-yellow-100 font-medium">
-                          🍽️ Lunch Break
-                        </td>
-                      </tr>
-                    )}
-                    <tr>
+              {timeSlots.map((time) => (
+                <tr key={time}>
                       <td className="border border-border p-3 font-medium bg-muted/50">{time}</td>
                       {days.map(day => {
                         const task = schedule[`${day}-${time}`];
@@ -366,9 +398,7 @@ const App: React.FC = () => {
                         );
                       })}
                     </tr>
-                  </React.Fragment>
-                );
-              })}
+                ))}
                 </tbody>
               </table>
             </div>
@@ -377,7 +407,7 @@ const App: React.FC = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl">Azure DevOps Wiki 代碼</CardTitle>
+            <CardTitle className="text-xl">HTML 表格代碼</CardTitle>
           </CardHeader>
           <CardContent>
             <Textarea
@@ -391,26 +421,36 @@ const App: React.FC = () => {
                 className="flex items-center gap-2"
               >
                 <Copy className="w-4 h-4" />
-                複製 Markdown
+                複製 HTML
               </Button>
               <Button
                 onClick={() => {
-                  const blob = new Blob([generateHTML()], { type: 'text/markdown' });
+                  const blob = new Blob([generateHTML()], { type: 'text/html' });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;
-                  a.download = 'schedule.md';
+                  a.download = 'schedule.html';
                   a.click();
                 }}
                 variant="secondary"
                 className="flex items-center gap-2"
               >
                 <Download className="w-4 h-4" />
-                下載 Markdown
+                下載 HTML
               </Button>
             </div>
           </CardContent>
         </Card>
+        
+        <Modal
+          isOpen={showModal}
+          onClose={() => {
+            setShowModal(false);
+            setPendingDragData(null);
+          }}
+          onConfirm={handleModalConfirm}
+          taskTypes={taskTypes}
+        />
       </div>
     </div>
   );
