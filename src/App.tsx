@@ -7,7 +7,7 @@ import { KanbanModule } from './components/modules/KanbanModule';
 import { SettingModal } from './components/SettingModal';
 
 const AppContent: React.FC = () => {
-  const { isDarkMode, setIsDarkMode } = useAppContext();
+  const { isDarkMode } = useAppContext();
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [activeTab, setActiveTab] = useState('calendar');
 
