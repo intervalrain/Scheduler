@@ -173,12 +173,12 @@ export const Calendar: React.FC = () => {
   const dragSelection = getDragSelection();
 
   return (
-    <div className="flex-1 p-6">
+    <div className="flex-1 p-6 overflow-y-auto">
       <h2 className="text-2xl font-bold mb-6 text-foreground">週行程表</h2>
 
       <Card className="mb-8 p-4">
         <CardContent className="p-0">
-          <div className="overflow-hidden">
+          <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-muted">

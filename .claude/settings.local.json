@@ -12,7 +12,8 @@
       "Bash(mv:*)",
       "Bash(npm uninstall:*)",
       "Bash(npm run dev:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

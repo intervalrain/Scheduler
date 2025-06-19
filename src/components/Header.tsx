@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from './ui/button';
 import { Settings, User, Sun, Moon } from 'lucide-react';
 
@@ -6,19 +6,22 @@ interface HeaderProps {
   onSettingsClick: () => void;
   isDarkMode?: boolean;
   onThemeToggle?: () => void;
+  activeTab: string;
+  onTabChange: (tab: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
   onSettingsClick, 
   isDarkMode = false, 
-  onThemeToggle 
+  onThemeToggle,
+  activeTab,
+  onTabChange
 }) => {
-  const [activeTab, setActiveTab] = useState('calendar');
 
   const tabs = [
     { id: 'calendar', name: '行程表', available: true },
-    { id: 'gantt', name: 'Gantt', available: false },
-    { id: 'kanban', name: 'Kanban', available: false },
+    { id: 'gantt', name: 'Gantt', available: true },
+    { id: 'kanban', name: 'Kanban', available: true },
   ];
 
   return (
@@ -35,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
                   variant={activeTab === tab.id ? "default" : "ghost"}
                   size="sm"
                   disabled={!tab.available}
-                  onClick={() => tab.available && setActiveTab(tab.id)}
+                  onClick={() => tab.available && onTabChange(tab.id)}
                   className={`${
                     !tab.available ? "opacity-50 cursor-not-allowed" : ""
                   }`}
