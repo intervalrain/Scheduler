@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Textarea } from './ui/textarea';
 import { Modal } from './ui/modal';
 import { Copy, Download, X } from 'lucide-react';
-import { useAppContext } from '../contexts/AppContext';
+import { useUserContext } from '../contexts/UserContext';
 
 export const Calendar: React.FC = () => {
   const {
@@ -27,7 +27,7 @@ export const Calendar: React.FC = () => {
     setEditingTask,
     updateSchedule,
     generateHTML,
-  } = useAppContext();
+  } = useUserContext();
 
   const handleMouseDown = (day: string, time: string): void => {
     setIsDragging(true);

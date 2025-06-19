@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { useAppContext } from '../../contexts/AppContext';
+import { useDataContext } from '../../contexts/DataContext';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { Button } from '../ui/button';
+import { TaskFormModal } from '../TaskFormModal';
 import { Task, KanbanState } from '../../types';
 import { Plus, Edit, Trash2, GitBranch, Split, ChevronUp, ChevronDown } from 'lucide-react';
 
@@ -15,7 +16,7 @@ interface TaskCardProps {
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDelete, onDivide, onBranch, onMove }) => {
-  const { tasks } = useAppContext();
+  const { tasks } = useDataContext();
   const [isDragging, setIsDragging] = useState(false);
 
   const getDependentTaskNames = (depIds: string[]): string => {
@@ -189,7 +190,12 @@ export const KanbanModule: React.FC = () => {
     deleteTask, 
     canMoveTaskToOngoing,
     getDependencyChain
-  } = useAppContext();
+  } = useDataContext();
+
+  const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit' | 'divide' | 'branch'>('add');
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [targetState, setTargetState] = useState<KanbanState>('pending');
 
   const handleTaskDrop = (taskId: string, newState: KanbanState) => {
     if (newState === 'ongoing' && !canMoveTaskToOngoing(taskId)) {
@@ -220,23 +226,28 @@ export const KanbanModule: React.FC = () => {
   };
 
   const handleAddTask = (state: KanbanState) => {
-    // TODO: Implement add task modal
-    console.log('Add task to state:', state);
+    setModalMode('add');
+    setTargetState(state);
+    setSelectedTask(null);
+    setShowModal(true);
   };
 
   const handleEditTask = (task: Task) => {
-    // TODO: Implement edit task modal
-    console.log('Edit task:', task);
+    setModalMode('edit');
+    setSelectedTask(task);
+    setShowModal(true);
   };
 
   const handleDivideTask = (task: Task) => {
-    // TODO: Implement divide task modal
-    console.log('Divide task:', task);
+    setModalMode('divide');
+    setSelectedTask(task);
+    setShowModal(true);
   };
 
   const handleBranchTask = (task: Task) => {
-    // TODO: Implement branch task modal
-    console.log('Branch task:', task);
+    setModalMode('branch');
+    setSelectedTask(task);
+    setShowModal(true);
   };
 
   const columns = [
@@ -271,6 +282,14 @@ export const KanbanModule: React.FC = () => {
           </div>
         ))}
       </div>
+
+      <TaskFormModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        mode={modalMode}
+        task={selectedTask}
+        targetState={targetState}
+      />
     </div>
   );
 };

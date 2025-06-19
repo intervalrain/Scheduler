@@ -4,7 +4,7 @@ import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Tooltip } from './ui/tooltip';
 import { Settings } from 'lucide-react';
-import { useAppContext } from '../contexts/AppContext';
+import { useUserContext } from '../contexts/UserContext';
 import type { Schedule } from '../types';
 
 interface SettingsPanelProps {
@@ -18,7 +18,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ collapsed }) => {
     schedule,
     updateSchedule,
     timeSlots
-  } = useAppContext();
+  } = useUserContext();
 
   const handleTimeConfigChange = (field: keyof typeof timeConfig, value: number) => {
     setTimeConfig(prev => ({ ...prev, [field]: value }));

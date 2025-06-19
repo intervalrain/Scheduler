@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAppContext } from '../../contexts/AppContext';
+import { useDataContext } from '../../contexts/DataContext';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -23,7 +23,7 @@ export const WorkAreaModule: React.FC = () => {
     setCurrentWorkTask, 
     updateTask, 
     getTasksByState 
-  } = useAppContext();
+  } = useDataContext();
 
   const [markdownNotes, setMarkdownNotes] = useState('');
   const [newChecklistItem, setNewChecklistItem] = useState('');

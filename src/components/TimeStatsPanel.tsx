@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Code, Timer } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { Tooltip } from "./ui/tooltip";
-import { useAppContext } from "../contexts/AppContext";
+import { useUserContext } from "../contexts/UserContext";
 
 interface TimeStatsPanelProps {
   collapsed: boolean;
@@ -11,7 +11,7 @@ interface TimeStatsPanelProps {
 export const TimeStatsPanel: React.FC<TimeStatsPanelProps> = ({
   collapsed,
 }) => {
-  const { calculateRemainingHours, calculateDevelopHours } = useAppContext();
+  const { calculateRemainingHours, calculateDevelopHours } = useUserContext();
   const [selectedCardIndex, setSelectedCardIndex] = useState(0);
 
   const statCards = [

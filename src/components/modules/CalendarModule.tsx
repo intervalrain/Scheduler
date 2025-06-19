@@ -4,10 +4,10 @@ import { Calendar } from '../Calendar';
 import { TimeStatsPanel } from '../TimeStatsPanel';
 import { TaskTypePanel } from '../TaskTypePanel';
 import { SettingsPanel } from '../SettingsPanel';
-import { useAppContext } from '../../contexts/AppContext';
+import { useUserContext } from '../../contexts/UserContext';
 
 export const CalendarModule: React.FC = () => {
-  const { sidebarCollapsed, setSidebarCollapsed } = useAppContext();
+  const { sidebarCollapsed, setSidebarCollapsed } = useUserContext();
 
   const panels = [
     {

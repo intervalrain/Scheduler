@@ -1,6 +1,7 @@
 import React from 'react';
-import { useAppContext } from '../../contexts/AppContext';
+import { useDataContext } from '../../contexts/DataContext';
 import { Card, CardContent, CardHeader } from '../ui/card';
+import { BurnChart } from '../BurnChart';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -116,7 +117,7 @@ export const DashboardModule: React.FC = () => {
     projectHealth, 
     currentSprint, 
     getTasksByState 
-  } = useAppContext();
+  } = useDataContext();
 
   const getTaskStats = () => {
     const pendingTasks = getTasksByState('pending');
@@ -374,6 +375,9 @@ export const DashboardModule: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Burn Chart */}
+      <BurnChart />
     </div>
   );
 };

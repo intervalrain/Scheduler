@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Tooltip } from './ui/tooltip';
 import { Plus, X, Target } from 'lucide-react';
-import { useAppContext } from '../contexts/AppContext';
+import { useUserContext } from '../contexts/UserContext';
 import type { TaskType } from '../types';
 
 interface TaskTypePanelProps {
@@ -19,7 +19,7 @@ export const TaskTypePanel: React.FC<TaskTypePanelProps> = ({ collapsed }) => {
     setSelectedTask,
     schedule,
     updateSchedule
-  } = useAppContext();
+  } = useUserContext();
   
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskName, setNewTaskName] = useState('');

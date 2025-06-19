@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "./ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useAppContext } from "@/contexts/AppContext";
+import { useUserContext } from "../contexts/UserContext";
 
 interface Panel {
   collapsed: (props: any) => React.ReactNode;
@@ -22,7 +22,7 @@ export const GenericSidebar: React.FC<GenericSidebarProps> = ({
   title,
   panels,
 }) => {
-  const { isDarkMode } = useAppContext();
+  const { isDarkMode } = useUserContext();
 
   return (
     <div

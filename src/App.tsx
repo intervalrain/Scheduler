@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { AppProvider, useAppContext } from './contexts/AppContext';
+import { DataProvider } from './contexts/DataContext';
+import { UserProvider, useUserContext } from './contexts/UserContext';
 import { Header } from './components/Header';
 import { CalendarModule } from './components/modules/CalendarModule';
 import { GanttModule } from './components/modules/GanttModule';
@@ -9,7 +10,7 @@ import { DashboardModule } from './components/modules/DashboardModule';
 import { SettingModal } from './components/SettingModal';
 
 const AppContent: React.FC = () => {
-  const { isDarkMode } = useAppContext();
+  const { isDarkMode } = useUserContext();
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -48,9 +49,11 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <UserProvider>
+      <DataProvider>
+        <AppContent />
+      </DataProvider>
+    </UserProvider>
   );
 };
 

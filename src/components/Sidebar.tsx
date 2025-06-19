@@ -3,10 +3,10 @@ import { TaskTypePanel } from './TaskTypePanel';
 import { TimeStatsPanel } from './TimeStatsPanel';
 import { Button } from './ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useAppContext } from '../contexts/AppContext';
+import { useUserContext } from '../contexts/UserContext';
 
 export const Sidebar: React.FC = () => {
-  const { sidebarCollapsed, setSidebarCollapsed } = useAppContext();
+  const { sidebarCollapsed, setSidebarCollapsed } = useUserContext();
 
   return (
     <div

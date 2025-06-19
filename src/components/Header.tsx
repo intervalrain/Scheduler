@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from './ui/button';
 import { Settings, User, Sun, Moon } from 'lucide-react';
-import { useAppContext } from '../contexts/AppContext';
+import { useUserContext } from '../contexts/UserContext';
 
 interface HeaderProps {
   onSettingsClick: () => void;
@@ -14,7 +14,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   onTabChange
 }) => {
-  const { isDarkMode, setIsDarkMode } = useAppContext();
+  const { isDarkMode, setIsDarkMode } = useUserContext();
   
   const onThemeToggle = () => {
     setIsDarkMode(!isDarkMode);
