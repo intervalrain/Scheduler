@@ -1,6 +1,7 @@
-import React from 'react';
-import { Button } from './ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React from "react";
+import { Button } from "./ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useAppContext } from "@/contexts/AppContext";
 
 interface Panel {
   collapsed: (props: any) => React.ReactNode;
@@ -21,6 +22,8 @@ export const GenericSidebar: React.FC<GenericSidebarProps> = ({
   title,
   panels,
 }) => {
+  const { isDarkMode } = useAppContext();
+
   return (
     <div
       className={`${
@@ -33,7 +36,7 @@ export const GenericSidebar: React.FC<GenericSidebarProps> = ({
             onClick={onToggleCollapse}
             variant="ghost"
             size="sm"
-            className="w-10 h-10 p-0"
+            className={isDarkMode ? `w-10 h-10 p-0 text-white` : `w-10 h-10 p-0`}
           >
             {isCollapsed ? (
               <ChevronRight className="w-4 h-4" />
@@ -44,22 +47,16 @@ export const GenericSidebar: React.FC<GenericSidebarProps> = ({
         </div>
 
         {isCollapsed ? (
-          <div className="px-2 space-y-3 py-4">
+          <div className={isDarkMode ? `px-2 space-y-3 py-4 text-white` : `px-2 space-y-3 py-4`}>
             {panels.map((panel, index) => (
-              <div key={index}>
-                {panel.collapsed(panel.props)}
-              </div>
+              <div key={index}>{panel.collapsed(panel.props)}</div>
             ))}
           </div>
         ) : (
           <div className="px-6 pb-6">
-            <h2 className="text-2xl font-bold mb-6 text-foreground">
-              {title}
-            </h2>
+            <h2 className="text-2xl font-bold mb-6 text-foreground">{title}</h2>
             {panels.map((panel, index) => (
-              <div key={index}>
-                {panel.expanded(panel.props)}
-              </div>
+              <div key={index}>{panel.expanded(panel.props)}</div>
             ))}
           </div>
         )}

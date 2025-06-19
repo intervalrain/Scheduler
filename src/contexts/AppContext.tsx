@@ -14,6 +14,8 @@ interface AppContextType {
   // UI state
   sidebarCollapsed: boolean;
   setSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
+  isDarkMode: boolean;
+  setIsDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
   
   // Task types
   taskTypes: TaskType[];
@@ -81,6 +83,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     const saved = localStorage.getItem("sidebarCollapsed");
+    return saved ? JSON.parse(saved) : false;
+  });
+  
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem("isDarkMode");
     return saved ? JSON.parse(saved) : false;
   });
   
@@ -222,6 +229,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [sidebarCollapsed]);
 
   useEffect(() => {
+    localStorage.setItem("isDarkMode", JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
+
+  useEffect(() => {
     if (Object.keys(schedule).length > 0) {
       localStorage.setItem("schedule", JSON.stringify(schedule));
     }
@@ -267,6 +278,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTimeConfig,
     sidebarCollapsed,
     setSidebarCollapsed,
+    isDarkMode,
+    setIsDarkMode,
     taskTypes,
     setTaskTypes,
     selectedTask,

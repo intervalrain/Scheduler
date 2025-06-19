@@ -1,22 +1,24 @@
 import React from 'react';
 import { Button } from './ui/button';
 import { Settings, User, Sun, Moon } from 'lucide-react';
+import { useAppContext } from '../contexts/AppContext';
 
 interface HeaderProps {
   onSettingsClick: () => void;
-  isDarkMode?: boolean;
-  onThemeToggle?: () => void;
   activeTab: string;
   onTabChange: (tab: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
   onSettingsClick, 
-  isDarkMode = false, 
-  onThemeToggle,
   activeTab,
   onTabChange
 }) => {
+  const { isDarkMode, setIsDarkMode } = useAppContext();
+  
+  const onThemeToggle = () => {
+    setIsDarkMode(!isDarkMode);
+  };
 
   const tabs = [
     { id: 'calendar', name: '行程表', available: true },
@@ -31,7 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center space-x-8">
             <h1 className="text-2xl font-bold text-foreground">Scheduler</h1>
             
-            <nav className="flex space-x-1">
+            <nav className={isDarkMode ? `flex space-x-1 text-white` : `flex space-x-1 text-black`}>
               {tabs.map((tab) => (
                 <Button
                   key={tab.id}
@@ -52,21 +54,19 @@ export const Header: React.FC<HeaderProps> = ({
             </nav>
           </div>
 
-          <div className="flex items-center space-x-2">
-            {onThemeToggle && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onThemeToggle}
-                className="w-9 h-9 p-0"
-              >
-                {isDarkMode ? (
-                  <Sun className="w-4 h-4" />
-                ) : (
-                  <Moon className="w-4 h-4" />
-                )}
-              </Button>
-            )}
+          <div className={isDarkMode ? `flex items-center space-x-2 text-white` : `flex items-center space-x-2 text-black`}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onThemeToggle}
+              className="w-9 h-9 p-0"
+            >
+              {isDarkMode ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
+            </Button>
             
             <Button
               variant="ghost"
