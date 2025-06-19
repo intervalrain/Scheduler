@@ -22,8 +22,10 @@ export const Header: React.FC<HeaderProps> = ({
 
   const tabs = [
     { id: 'calendar', name: '行程表', available: true },
-    { id: 'gantt', name: 'Gantt', available: true },
     { id: 'kanban', name: 'Kanban', available: true },
+    { id: 'workarea', name: '工作區', available: true },
+    { id: 'gantt', name: 'Gantt', available: true },
+    { id: 'dashboard', name: '儀表板', available: true },
   ];
 
   return (

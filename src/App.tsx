@@ -4,12 +4,14 @@ import { Header } from './components/Header';
 import { CalendarModule } from './components/modules/CalendarModule';
 import { GanttModule } from './components/modules/GanttModule';
 import { KanbanModule } from './components/modules/KanbanModule';
+import { WorkAreaModule } from './components/modules/WorkAreaModule';
+import { DashboardModule } from './components/modules/DashboardModule';
 import { SettingModal } from './components/SettingModal';
 
 const AppContent: React.FC = () => {
   const { isDarkMode } = useAppContext();
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [activeTab, setActiveTab] = useState('calendar');
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   const renderModule = () => {
     switch (activeTab) {
@@ -19,8 +21,12 @@ const AppContent: React.FC = () => {
         return <GanttModule />;
       case 'kanban':
         return <KanbanModule />;
+      case 'workarea':
+        return <WorkAreaModule />;
+      case 'dashboard':
+        return <DashboardModule />;
       default:
-        return <CalendarModule />;
+        return <DashboardModule />;
     }
   };
 
