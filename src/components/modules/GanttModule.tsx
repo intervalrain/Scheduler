@@ -1,24 +1,30 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { Button } from '../ui/button';
-import { Calendar, Clock, Play, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, Play, RotateCcw, AlertTriangle, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 import { useDataContext } from '../../contexts/DataContext';
 import { useUserContext } from '../../contexts/UserContext';
 import { Task } from '../../types';
 
-interface ScheduledTaskBlock {
+interface GanttTask {
   task: Task;
   startDate: Date;
   endDate: Date;
+  duration: number;
+  progress: number;
   color: string;
   canStart: boolean;
+  dependencies: string[];
 }
 
-interface TimelineDay {
+interface GanttColumn {
   date: Date;
   isWorkingDay: boolean;
-  tasks: ScheduledTaskBlock[];
+  isToday: boolean;
+  dayOfWeek: string;
 }
+
+type ViewMode = 'day' | 'week' | 'month';
 
 export const GanttModule: React.FC = () => {
   const { 
@@ -33,6 +39,10 @@ export const GanttModule: React.FC = () => {
   const { calculateDevelopHours } = useUserContext();
   
   const [autoScheduleEnabled, setAutoScheduleEnabled] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('day');
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [columnWidth, setColumnWidth] = useState(40);
+  const ganttRef = useRef<HTMLDivElement>(null);
 
   const taskColors = {
     'pending': '#94a3b8',
@@ -41,26 +51,56 @@ export const GanttModule: React.FC = () => {
     'done': '#10b981'
   };
 
-  const generateAutoSchedule = (): ScheduledTaskBlock[] => {
+  // Generate timeline columns based on view mode
+  const generateTimelineColumns = useMemo((): GanttColumn[] => {
     if (!currentSprint) return [];
 
-    const scheduledTasks: ScheduledTaskBlock[] = [];
+    const columns: GanttColumn[] = [];
+    const startDate = new Date(currentSprint.startDate);
+    const endDate = new Date(currentSprint.endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let current = new Date(startDate);
+    
+    while (current <= endDate) {
+      const isWorkingDay = currentSprint.workingDays.includes(
+        current.toLocaleDateString('en-US', { weekday: 'long' })
+      );
+      
+      const currentDate = new Date(current);
+      currentDate.setHours(0, 0, 0, 0);
+      
+      columns.push({
+        date: new Date(current),
+        isWorkingDay,
+        isToday: currentDate.getTime() === today.getTime(),
+        dayOfWeek: current.toLocaleDateString('zh-TW', { weekday: 'short' })
+      });
+
+      if (viewMode === 'day') {
+        current.setDate(current.getDate() + 1);
+      } else if (viewMode === 'week') {
+        current.setDate(current.getDate() + 7);
+      } else {
+        current.setMonth(current.getMonth() + 1);
+      }
+    }
+
+    return columns;
+  }, [currentSprint, viewMode]);
+
+  // Generate Gantt tasks with calculated positions
+  const generateGanttTasks = useMemo((): GanttTask[] => {
+    if (!currentSprint) return [];
+
+    const ganttTasks: GanttTask[] = [];
     const incompleteTasks = tasks.filter(task => task.state !== 'done');
     
     const sortedTasks = [...incompleteTasks].sort((a, b) => {
-      // First priority: ongoing tasks should be scheduled before queued tasks
       if (a.state === 'ongoing' && b.state !== 'ongoing') return -1;
       if (b.state === 'ongoing' && a.state !== 'ongoing') return 1;
-      
-      // Second priority: task priority
       if (a.priority !== b.priority) return a.priority - b.priority;
-      
-      // Third priority: dependency chain length (tasks with more dependencies first)
-      const aDeps = getDependencyChain(a.taskId).length;
-      const bDeps = getDependencyChain(b.taskId).length;
-      if (aDeps !== bDeps) return bDeps - aDeps;
-      
-      // Final priority: creation time
       return a.createdAt.getTime() - b.createdAt.getTime();
     });
 
@@ -72,11 +112,51 @@ export const GanttModule: React.FC = () => {
     let currentDayHours = 0;
     const completedTasks = new Set<string>();
 
+    // Add completed tasks first
+    const doneTasks = tasks.filter(task => task.state === 'done');
+    doneTasks.forEach(task => {
+      const duration = Math.max(1, task.workHours / 8); // Convert hours to days
+      const startDate = new Date(task.createdAt);
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + duration - 1);
+
+      ganttTasks.push({
+        task,
+        startDate,
+        endDate,
+        duration,
+        progress: 100,
+        color: taskColors[task.state],
+        canStart: true,
+        dependencies: task.dependencies
+      });
+      completedTasks.add(task.taskId);
+    });
+
+    // Schedule incomplete tasks
     for (const task of sortedTasks) {
       const dependencies = getDependencyChain(task.taskId);
       const canStart = dependencies.every(depId => completedTasks.has(depId));
       
-      if (!canStart && task.state === 'pending') continue;
+      if (!canStart && task.state === 'pending') {
+        // Place blocked tasks after their dependencies
+        const taskStartDate = new Date(currentSprint.endDate);
+        const duration = Math.max(1, task.workHours / 8);
+        const taskEndDate = new Date(taskStartDate);
+        taskEndDate.setDate(taskEndDate.getDate() + duration - 1);
+
+        ganttTasks.push({
+          task,
+          startDate: taskStartDate,
+          endDate: taskEndDate,
+          duration,
+          progress: 0,
+          color: taskColors[task.state],
+          canStart: false,
+          dependencies: task.dependencies
+        });
+        continue;
+      }
 
       let remainingHours = task.workHours;
       const taskStartDate = new Date(currentDate);
@@ -109,52 +189,43 @@ export const GanttModule: React.FC = () => {
         taskEndDate.setDate(taskEndDate.getDate() - 1);
       }
 
-      scheduledTasks.push({
+      const duration = Math.max(1, (taskEndDate.getTime() - taskStartDate.getTime()) / (1000 * 60 * 60 * 24) + 1);
+      const progress = task.state === 'ongoing' ? 30 : task.state === 'queueing' ? 10 : 0;
+
+      ganttTasks.push({
         task,
         startDate: taskStartDate,
         endDate: taskEndDate,
+        duration,
+        progress,
         color: taskColors[task.state],
-        canStart
+        canStart,
+        dependencies: task.dependencies
       });
 
-      if (task.state === 'done' || remainingHours === 0) {
+      if (remainingHours === 0) {
         completedTasks.add(task.taskId);
       }
     }
 
-    return scheduledTasks;
-  };
+    return ganttTasks;
+  }, [currentSprint, tasks, autoScheduleEnabled, calculateDevelopHours, getDependencyChain]);
 
-  const timeline = useMemo((): TimelineDay[] => {
-    if (!currentSprint) return [];
+  // Calculate task position and width in the Gantt chart
+  const getTaskPosition = (ganttTask: GanttTask) => {
+    if (!currentSprint) return { left: 0, width: 0 };
 
-    const days: TimelineDay[] = [];
-    const scheduledTasks = autoScheduleEnabled ? generateAutoSchedule() : [];
+    const sprintStart = currentSprint.startDate.getTime();
+    const dayMs = 24 * 60 * 60 * 1000;
     
-    const currentDate = new Date(currentSprint.startDate);
-    const endDate = new Date(currentSprint.endDate);
-
-    while (currentDate <= endDate) {
-      const isWorkingDay = currentSprint.workingDays.includes(
-        currentDate.toLocaleDateString('en-US', { weekday: 'long' })
-      );
-
-      const dayTasks = scheduledTasks.filter(scheduled => {
-        const taskDate = new Date(currentDate);
-        return scheduled.startDate <= taskDate && taskDate <= scheduled.endDate;
-      });
-
-      days.push({
-        date: new Date(currentDate),
-        isWorkingDay,
-        tasks: dayTasks
-      });
-
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    return days;
-  }, [currentSprint, tasks, autoScheduleEnabled]);
+    const startOffset = Math.max(0, (ganttTask.startDate.getTime() - sprintStart) / dayMs);
+    const taskDuration = (ganttTask.endDate.getTime() - ganttTask.startDate.getTime()) / dayMs + 1;
+    
+    return {
+      left: startOffset * columnWidth,
+      width: Math.max(columnWidth / 2, taskDuration * columnWidth)
+    };
+  };
 
   const getTaskStats = () => {
     const incompleteTasks = tasks.filter(task => task.state !== 'done');
@@ -170,6 +241,8 @@ export const GanttModule: React.FC = () => {
   };
 
   const stats = getTaskStats();
+  const timelineColumns = generateTimelineColumns;
+  const ganttTasks = autoScheduleEnabled ? generateGanttTasks : [];
 
   if (!currentSprint) {
     return (
@@ -188,141 +261,203 @@ export const GanttModule: React.FC = () => {
   }
 
   return (
-    <div className="flex-1 p-6 space-y-6 overflow-auto">
+    <div className="flex-1 p-6 space-y-4 overflow-hidden">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold">甘特圖排程</h2>
-          <p className="text-muted-foreground">自動任務排程與時間線規劃</p>
+          <h2 className="text-3xl font-bold">甘特圖</h2>
+          <p className="text-muted-foreground">項目時間線與任務排程</p>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          {/* View Mode Controls */}
+          <div className="flex border rounded-lg">
+            {(['day', 'week', 'month'] as ViewMode[]).map((mode) => (
+              <Button
+                key={mode}
+                variant={viewMode === mode ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode(mode)}
+                className="px-3 py-1 text-xs"
+              >
+                {mode === 'day' ? '日' : mode === 'week' ? '週' : '月'}
+              </Button>
+            ))}
+          </div>
+
+          {/* Zoom Controls */}
+          <div className="flex border rounded-lg">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setColumnWidth(Math.max(20, columnWidth - 10))}
+              className="px-2"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setColumnWidth(Math.min(80, columnWidth + 10))}
+              className="px-2"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Auto Schedule Toggle */}
           <Button
             onClick={() => setAutoScheduleEnabled(!autoScheduleEnabled)}
             variant={autoScheduleEnabled ? "default" : "outline"}
+            size="sm"
             className="flex items-center gap-2"
           >
             {autoScheduleEnabled ? <RotateCcw className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            {autoScheduleEnabled ? '重置排程' : '自動排程'}
+            {autoScheduleEnabled ? '重置' : '自動排程'}
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-blue-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">待完成任務</p>
-                <p className="text-2xl font-bold">{stats.totalTasks}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-orange-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">所需工時</p>
-                <p className="text-2xl font-bold">{stats.totalHours}h</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">被阻擋任務</p>
-                <p className="text-2xl font-bold">{stats.blockedTasks}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <div className={`w-5 h-5 rounded-full ${stats.canSchedule ? 'bg-green-600' : 'bg-red-600'}`} />
-              <div>
-                <p className="text-sm text-muted-foreground">排程狀態</p>
-                <p className="text-2xl font-bold">{stats.canSchedule ? '可行' : '超時'}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <h3 className="text-xl font-semibold flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
-            時間線視圖
-          </h3>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {timeline.map((day, index) => (
-              <div key={index} className="flex items-center gap-4 p-2 rounded hover:bg-muted/50">
-                <div className="w-24 text-sm font-medium">
-                  {day.date.toLocaleDateString('zh-TW', { 
-                    month: 'short', 
-                    day: 'numeric',
-                    weekday: 'short'
-                  })}
+      {/* Gantt Chart */}
+      <Card className="flex-1 overflow-hidden">
+        <CardContent className="p-0 h-full">
+          <div className="flex h-full">
+            {/* Task List Panel */}
+            <div className="w-80 border-r bg-muted/30 flex flex-col">
+              <div className="p-4 border-b bg-background">
+                <h3 className="font-semibold">任務列表</h3>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {stats.totalTasks} 個任務
                 </div>
-                
-                <div className={`w-2 h-2 rounded-full ${
-                  day.isWorkingDay ? 'bg-green-500' : 'bg-gray-300'
-                }`} />
-                
-                <div className="flex-1 flex gap-2 overflow-x-auto">
-                  {day.tasks.length === 0 ? (
-                    <div className="text-sm text-muted-foreground italic">
-                      {day.isWorkingDay ? '無排程任務' : '非工作日'}
-                    </div>
-                  ) : (
-                    day.tasks.map((scheduled, taskIndex) => (
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {(autoScheduleEnabled ? ganttTasks : tasks.filter(t => t.state !== 'done')).map((item, index) => {
+                  const task = 'task' in item ? item.task : item;
+                  const ganttTask = 'task' in item ? item : null;
+                  
+                  return (
+                    <div
+                      key={task.taskId}
+                      className="flex items-center gap-3 p-3 border-b hover:bg-muted/50 cursor-pointer"
+                      style={{ height: '48px' }}
+                    >
                       <div
-                        key={taskIndex}
-                        className="flex-shrink-0 px-3 py-1 rounded text-xs text-white font-medium"
-                        style={{ backgroundColor: scheduled.color }}
-                        title={`${scheduled.task.taskName} (${scheduled.task.workHours}h)`}
+                        className="w-3 h-3 rounded-sm flex-shrink-0"
+                        style={{ backgroundColor: taskColors[task.state] }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">
+                          {task.taskName}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {task.workHours}h • {task.state}
+                          {ganttTask && !ganttTask.canStart && (
+                            <span className="text-red-500 ml-1">• 被阻擋</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Timeline Panel */}
+            <div className="flex-1 overflow-hidden">
+              <div ref={ganttRef} className="h-full overflow-auto">
+                {/* Timeline Header */}
+                <div className="sticky top-0 bg-background border-b z-10">
+                  <div className="flex">
+                    {timelineColumns.map((column, index) => (
+                      <div
+                        key={index}
+                        className={`border-r text-center py-2 px-1 text-xs font-medium ${
+                          column.isToday ? 'bg-primary/10 text-primary' : ''
+                        } ${!column.isWorkingDay ? 'bg-muted/50 text-muted-foreground' : ''}`}
+                        style={{ minWidth: columnWidth, width: columnWidth }}
                       >
-                        {scheduled.task.taskName}
-                        {!scheduled.canStart && (
-                          <AlertTriangle className="w-3 h-3 inline ml-1" />
+                        <div>{column.date.getDate()}</div>
+                        <div className="text-xs opacity-70">{column.dayOfWeek}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Task Bars */}
+                <div className="relative">
+                  {/* Timeline Grid */}
+                  <div className="absolute inset-0 flex">
+                    {timelineColumns.map((column, index) => (
+                      <div
+                        key={index}
+                        className={`border-r ${
+                          column.isToday ? 'bg-primary/5' : 
+                          !column.isWorkingDay ? 'bg-muted/30' : ''
+                        }`}
+                        style={{ minWidth: columnWidth, width: columnWidth }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Task Rows */}
+                  {(autoScheduleEnabled ? ganttTasks : tasks.filter(t => t.state !== 'done')).map((item, index) => {
+                    const task = 'task' in item ? item.task : item;
+                    const ganttTask = 'task' in item ? item : null;
+                    const position = ganttTask ? getTaskPosition(ganttTask) : { left: 0, width: 0 };
+                    
+                    return (
+                      <div
+                        key={task.taskId}
+                        className="relative border-b"
+                        style={{ height: '48px' }}
+                      >
+                        {ganttTask && autoScheduleEnabled && (
+                          <div
+                            className="absolute top-2 h-6 rounded-md shadow-sm border flex items-center justify-center text-xs text-white font-medium cursor-pointer hover:shadow-md transition-shadow"
+                            style={{
+                              left: position.left,
+                              width: position.width,
+                              backgroundColor: ganttTask.color,
+                              opacity: ganttTask.canStart ? 1 : 0.6
+                            }}
+                            title={`${task.taskName} (${ganttTask.duration.toFixed(1)} 天)`}
+                          >
+                            <div className="truncate px-2">
+                              {task.taskName}
+                              {ganttTask.progress > 0 && (
+                                <span className="ml-1">({ganttTask.progress}%)</span>
+                              )}
+                            </div>
+                            {ganttTask.progress > 0 && (
+                              <div
+                                className="absolute left-0 top-0 h-full bg-black/20 rounded-l-md"
+                                style={{ width: `${ganttTask.progress}%` }}
+                              />
+                            )}
+                          </div>
                         )}
                       </div>
-                    ))
-                  )}
+                    );
+                  })}
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {!stats.canSchedule && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-red-800">
-              <AlertTriangle className="w-5 h-5" />
-              <div>
-                <p className="font-semibold">排程警告</p>
-                <p className="text-sm">
-                  當前任務需要 {stats.totalHours} 小時，但可用時間僅 {projectHealth.availableHours.toFixed(1)} 小時。
-                  建議調整 Sprint 時間或減少任務範圍。
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Status Bar */}
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <div className="flex items-center gap-4">
+          <span>總任務: {stats.totalTasks}</span>
+          <span>總工時: {stats.totalHours}h</span>
+          <span>被阻擋: {stats.blockedTasks}</span>
+        </div>
+        <div className={`flex items-center gap-2 ${stats.canSchedule ? 'text-green-600' : 'text-red-600'}`}>
+          <div className={`w-2 h-2 rounded-full ${stats.canSchedule ? 'bg-green-600' : 'bg-red-600'}`} />
+          <span>{stats.canSchedule ? '排程可行' : '時間不足'}</span>
+        </div>
+      </div>
     </div>
   );
 };
