@@ -11,20 +11,24 @@ interface BurnChartPoint {
 }
 
 export const BurnChart: React.FC = () => {
-  const { burnChartData, currentSprint, tasks } = useDataContext();
+  const { burnChartData, currentSprint, tasks, getCurrentSprintDates } = useDataContext();
 
   const chartData = useMemo(() => {
     if (!currentSprint || burnChartData.length === 0) return null;
 
+    const sprintDates = getCurrentSprintDates();
+    if (!sprintDates) return null;
+
+    const { startDate, endDate } = sprintDates;
     const totalHours = tasks.reduce((sum, task) => sum + task.workHours, 0);
     const sprintDuration = Math.ceil(
-      (currentSprint.endDate.getTime() - currentSprint.startDate.getTime()) / (1000 * 60 * 60 * 24)
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
     );
 
     // Generate ideal burn line
     const idealLine: BurnChartPoint[] = [];
     for (let i = 0; i <= sprintDuration; i++) {
-      const date = new Date(currentSprint.startDate.getTime() + i * 24 * 60 * 60 * 1000);
+      const date = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
       const remainingHours = totalHours * (1 - i / sprintDuration);
       idealLine.push({
         date,
@@ -42,7 +46,7 @@ export const BurnChart: React.FC = () => {
       totalHours,
       sprintDuration,
     };
-  }, [burnChartData, currentSprint, tasks]);
+  }, [burnChartData, currentSprint, tasks, getCurrentSprintDates]);
 
   if (!chartData || !currentSprint) {
     return (
@@ -69,7 +73,9 @@ export const BurnChart: React.FC = () => {
 
   // Calculate scales
   const xScale = (date: Date) => {
-    const daysSinceStart = (date.getTime() - currentSprint.startDate.getTime()) / (1000 * 60 * 60 * 24);
+    const sprintDates = getCurrentSprintDates();
+    if (!sprintDates) return padding;
+    const daysSinceStart = (date.getTime() - sprintDates.startDate.getTime()) / (1000 * 60 * 60 * 24);
     return padding + (daysSinceStart / chartData.sprintDuration) * (chartWidth - 2 * padding);
   };
 
@@ -130,9 +136,9 @@ export const BurnChart: React.FC = () => {
             Burn Chart
           </h3>
           <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-            healthStatus === 'healthy' ? 'bg-green-100 text-green-700' :
-            healthStatus === 'unhealthy' ? 'bg-red-100 text-red-700' :
-            'bg-gray-100 text-gray-700'
+            healthStatus === 'healthy' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
+            healthStatus === 'unhealthy' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+            'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
           }`}>
             {healthStatus === 'healthy' ? '健康' :
              healthStatus === 'unhealthy' ? '落後' : '未知'}
@@ -171,8 +177,10 @@ export const BurnChart: React.FC = () => {
 
             {/* Vertical grid lines */}
             {[0, 0.25, 0.5, 0.75, 1].map(ratio => {
+              const sprintDates = getCurrentSprintDates();
+              if (!sprintDates) return null;
               const dayIndex = Math.round(chartData.sprintDuration * ratio);
-              const date = new Date(currentSprint.startDate.getTime() + dayIndex * 24 * 60 * 60 * 1000);
+              const date = new Date(sprintDates.startDate.getTime() + dayIndex * 24 * 60 * 60 * 1000);
               const x = xScale(date);
               return (
                 <g key={ratio}>

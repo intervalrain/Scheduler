@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useDataContext } from '../../contexts/DataContext';
+import { useUserContext } from '../../contexts/UserContext';
+import { GenericSidebar } from '../GenericSidebar';
+import { TaskSelectionPanel } from '../TaskSelectionPanel';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
+import { MarkdownEditor } from '../MarkdownEditor';
 import { Task, ChecklistItem } from '../../types';
 import { 
   Play, 
-  Save, 
   Plus, 
   Check, 
   X, 
-  Edit, 
-  FileText,
+  Edit,
   CheckCircle2,
   Circle
 } from 'lucide-react';
@@ -21,9 +22,9 @@ export const WorkAreaModule: React.FC = () => {
   const { 
     currentWorkTask, 
     setCurrentWorkTask, 
-    updateTask, 
-    getTasksByState 
+    updateTask
   } = useDataContext();
+  const { sidebarCollapsed, setSidebarCollapsed } = useUserContext();
 
   const [markdownNotes, setMarkdownNotes] = useState('');
   const [newChecklistItem, setNewChecklistItem] = useState('');
@@ -99,61 +100,36 @@ export const WorkAreaModule: React.FC = () => {
     return Math.round((completedItems / currentWorkTask.items.length) * 100);
   };
 
-  const ongoingTasks = getTasksByState('ongoing');
-  const queueingTasks = getTasksByState('queueing');
+  const items = [
+    {
+      collapsed: () => (
+        <TaskSelectionPanel 
+          collapsed={true} 
+          onTaskSelect={handleTaskSelect}
+          currentWorkTask={currentWorkTask}
+        />
+      ),
+      expanded: () => (
+        <TaskSelectionPanel 
+          collapsed={false} 
+          onTaskSelect={handleTaskSelect}
+          currentWorkTask={currentWorkTask}
+        />
+      ),
+    },
+  ];
 
   return (
-    <div className="flex-1 flex gap-4 p-4 overflow-hidden">
-      {/* Task Selection Sidebar */}
-      <div className="w-80 flex flex-col">
-        <Card className="flex-1">
-          <CardHeader>
-            <h3 className="font-semibold">選擇工作任務</h3>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="space-y-2">
-              <div className="px-4 py-2 border-b">
-                <h4 className="text-sm font-medium text-green-600">進行中 ({ongoingTasks.length})</h4>
-              </div>
-              <div className="max-h-48 overflow-y-auto">
-                {ongoingTasks.map(task => (
-                  <div
-                    key={task.taskId}
-                    className={`px-4 py-2 cursor-pointer hover:bg-muted transition-colors ${
-                      currentWorkTask?.taskId === task.taskId ? 'bg-blue-50 border-l-4 border-blue-500' : ''
-                    }`}
-                    onClick={() => handleTaskSelect(task)}
-                  >
-                    <div className="text-sm font-medium">{task.taskName}</div>
-                    <div className="text-xs text-muted-foreground">{task.category}</div>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="px-4 py-2 border-b border-t">
-                <h4 className="text-sm font-medium text-orange-600">排隊中 ({queueingTasks.length})</h4>
-              </div>
-              <div className="max-h-48 overflow-y-auto">
-                {queueingTasks.map(task => (
-                  <div
-                    key={task.taskId}
-                    className={`px-4 py-2 cursor-pointer hover:bg-muted transition-colors ${
-                      currentWorkTask?.taskId === task.taskId ? 'bg-blue-50 border-l-4 border-blue-500' : ''
-                    }`}
-                    onClick={() => handleTaskSelect(task)}
-                  >
-                    <div className="text-sm font-medium">{task.taskName}</div>
-                    <div className="text-xs text-muted-foreground">{task.category}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="flex flex-1 overflow-hidden">
+      <GenericSidebar
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        title="工作區域"
+        items={items}
+      />
 
       {/* Work Area */}
-      <div className="flex-1 flex flex-col space-y-4 overflow-hidden">
+      <div className="flex-1 flex flex-col space-y-4 overflow-hidden p-4">
         {currentWorkTask ? (
           <>
             {/* Task Header */}
@@ -283,28 +259,13 @@ export const WorkAreaModule: React.FC = () => {
               </Card>
 
               {/* Markdown Notes */}
-              <Card className="flex flex-col">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      筆記 (Markdown)
-                    </h3>
-                    <Button onClick={handleSaveNotes} size="sm" variant="outline">
-                      <Save className="w-4 h-4 mr-2" />
-                      儲存
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col p-0">
-                  <Textarea
-                    value={markdownNotes}
-                    onChange={(e) => setMarkdownNotes(e.target.value)}
-                    placeholder="在此處撰寫 Markdown 筆記..."
-                    className="flex-1 resize-none border-0 rounded-none focus:ring-0"
-                  />
-                </CardContent>
-              </Card>
+              <MarkdownEditor
+                value={markdownNotes}
+                onChange={setMarkdownNotes}
+                onSave={handleSaveNotes}
+                placeholder="在此處撰寫 Markdown 筆記..."
+                className="flex-1"
+              />
             </div>
           </>
         ) : (

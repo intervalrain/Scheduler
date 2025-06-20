@@ -17,7 +17,7 @@ const AppContent: React.FC = () => {
   const renderModule = () => {
     switch (activeTab) {
       case 'calendar':
-        return <CalendarModule />;
+        return <CalendarModule onSettingsClick={() => setShowSettingsModal(true)} />;
       case 'gantt':
         return <GanttModule />;
       case 'kanban':

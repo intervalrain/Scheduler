@@ -18,6 +18,27 @@ export interface Schedule {
   [key: string]: ScheduledTask;
 }
 
+// Enhanced Calendar Time Block types
+export interface TimeBlock {
+  id: string;
+  type: 'meeting' | 'lunch' | 'integration' | 'development' | 'research' | 'break';
+  title: string;
+  startTime: number; // Hour in 24h format (e.g., 9 for 9:00)
+  duration: number; // Duration in hours (e.g., 0.5 for 30 minutes)
+  date: string; // Date in YYYY-MM-DD format
+  color: string;
+  description?: string;
+}
+
+export interface CalendarDay {
+  date: string;
+  blocks: TimeBlock[];
+}
+
+export interface CalendarSchedule {
+  [dateKey: string]: TimeBlock[];
+}
+
 export interface DragState {
   day: string;
   time: string;
@@ -50,10 +71,11 @@ export interface Task {
 export interface Sprint {
   id: string;
   name: string;
-  startDate: Date;
-  endDate: Date;
+  iterationWeeks: number; // Length in weeks (1, 2, 3, 4, 5, 6...)
+  startDay: number; // Day of week (0=Sunday, 1=Monday, etc.)
   workingDays: string[];
   workingHours: { start: number; end: number; };
+  createdAt: Date; // When this sprint configuration was created
 }
 
 export interface ProjectHealth {

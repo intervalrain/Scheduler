@@ -223,7 +223,7 @@ export const Calendar: React.FC = () => {
                         >
                           {task && editingTask?.key === cellKey ? (
                             <div className="bg-white rounded text-sm h-full flex flex-col justify-center relative border-2 border-blue-400 shadow-md">
-                              <div className="text-center text-gray-600 text-xs mb-1 px-2">
+                              <div className="text-center text-muted-foreground text-xs mb-1 px-2">
                                 {taskTypes.find((t) => t.id === task.id)?.name || task.id}
                               </div>
                               <div className="px-2">
@@ -245,7 +245,7 @@ export const Calendar: React.FC = () => {
                                   onBlur={saveTaskEdit}
                                   autoFocus
                                   placeholder="任務名稱"
-                                  className="w-full text-xs text-gray-800 border-0 bg-transparent focus:outline-none text-center placeholder-gray-400"
+                                  className="w-full text-xs text-foreground border-0 bg-transparent focus:outline-none text-center placeholder-muted-foreground"
                                 />
                               </div>
                             </div>

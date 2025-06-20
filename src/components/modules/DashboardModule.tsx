@@ -1,5 +1,7 @@
 import React from 'react';
 import { useDataContext } from '../../contexts/DataContext';
+import { useUserContext } from '../../contexts/UserContext';
+import { GenericSidebar } from '../GenericSidebar';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { BurnChart } from '../BurnChart';
 import { 
@@ -8,7 +10,8 @@ import {
   CheckCircle, 
   Activity,
   Target,
-  Calendar
+  Calendar,
+  BarChart3
 } from 'lucide-react';
 
 interface StatCardProps {
@@ -116,8 +119,11 @@ export const DashboardModule: React.FC = () => {
     tasks, 
     projectHealth, 
     currentSprint, 
-    getTasksByState 
+    getTasksByState,
+    getCurrentSprintDates,
+    getRemainingSprintTime
   } = useDataContext();
+  const { sidebarCollapsed, setSidebarCollapsed } = useUserContext();
 
   const getTaskStats = () => {
     const pendingTasks = getTasksByState('pending');
@@ -161,14 +167,21 @@ export const DashboardModule: React.FC = () => {
   const getSprintProgress = () => {
     if (!currentSprint) return null;
     
+    const sprintDates = getCurrentSprintDates();
+    if (!sprintDates) return null;
+    
     const now = new Date();
-    const total = currentSprint.endDate.getTime() - currentSprint.startDate.getTime();
-    const elapsed = now.getTime() - currentSprint.startDate.getTime();
+    const { startDate, endDate } = sprintDates;
+    const total = endDate.getTime() - startDate.getTime();
+    const elapsed = now.getTime() - startDate.getTime();
     const progress = Math.max(0, Math.min(100, (elapsed / total) * 100));
     
     return {
       progress,
-      daysRemaining: Math.max(0, Math.ceil((currentSprint.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))),
+      remainingTime: getRemainingSprintTime(),
+      startDate,
+      endDate,
+      iterationWeeks: currentSprint.iterationWeeks,
     };
   };
 
@@ -177,8 +190,81 @@ export const DashboardModule: React.FC = () => {
   const healthStatus = getHealthStatus();
   const sprintProgress = getSprintProgress();
 
+  const items = [
+    {
+      collapsed: () => (
+        <div className="text-center space-y-3">
+          <div>
+            <BarChart3 className="w-6 h-6 mx-auto mb-1 text-blue-600" />
+            <div className="text-xs font-medium text-blue-600">儀表</div>
+          </div>
+          <div className="space-y-2">
+            <div className="text-xs">
+              <div className={`font-bold ${
+                healthStatus.color === 'green' ? 'text-green-600' :
+                healthStatus.color === 'blue' ? 'text-blue-600' :
+                healthStatus.color === 'yellow' ? 'text-yellow-600' :
+                'text-red-600'
+              }`}>{projectHealth.healthPercentage.toFixed(0)}%</div>
+              <div className="text-xs text-muted-foreground">健康</div>
+            </div>
+            <div className="text-xs">
+              <div className="text-green-600 font-medium">{taskStats.done}</div>
+              <div className="text-xs text-muted-foreground">完成</div>
+            </div>
+          </div>
+        </div>
+      ),
+      expanded: () => (
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-blue-600" />
+              <h3 className="font-semibold">專案概覽</h3>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">專案健康度</span>
+                  <span className={`font-bold ${
+                    healthStatus.color === 'green' ? 'text-green-600' :
+                    healthStatus.color === 'blue' ? 'text-blue-600' :
+                    healthStatus.color === 'yellow' ? 'text-yellow-600' :
+                    'text-red-600'
+                  }`}>{projectHealth.healthPercentage.toFixed(1)}%</span>
+                </div>
+                <div className="text-xs text-muted-foreground">{healthStatus.text}</div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">已完成任務</span>
+                <span className="font-medium text-green-600">{taskStats.done}/{taskStats.total}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">完成工時</span>
+                <span className="font-medium text-blue-600">{workHourStats.completed}h</span>
+              </div>
+              {currentSprint && sprintProgress && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Sprint 進度</span>
+                  <span className="font-medium text-purple-600">{sprintProgress.progress.toFixed(0)}%</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ),
+    },
+  ];
+
   return (
-    <div className="flex-1 p-6 space-y-6 overflow-auto">
+    <div className="flex flex-1 overflow-hidden">
+      <GenericSidebar
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        title="專案儀表板"
+        items={items}
+      />
+      <div className="flex-1 p-6 space-y-6 overflow-auto">
       {/* Header */}
       <div>
         <h2 className="text-3xl font-bold">專案儀表板</h2>
@@ -267,7 +353,7 @@ export const DashboardModule: React.FC = () => {
             title="Sprint 進度"
             value={`${sprintProgress.progress.toFixed(1)}%`}
             icon={<Calendar className="w-4 h-4 text-purple-600" />}
-            description={`剩餘 ${sprintProgress.daysRemaining} 天`}
+            description={sprintProgress.remainingTime || '計算中...'}
           />
         )}
       </div>
@@ -349,11 +435,11 @@ export const DashboardModule: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">開始日期</p>
-                <p className="font-medium">{currentSprint.startDate.toLocaleDateString('zh-TW')}</p>
+                <p className="font-medium">{sprintProgress?.startDate.toLocaleDateString('zh-TW') || '計算中...'}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">結束日期</p>
-                <p className="font-medium">{currentSprint.endDate.toLocaleDateString('zh-TW')}</p>
+                <p className="font-medium">{sprintProgress?.endDate.toLocaleDateString('zh-TW') || '計算中...'}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">工作時間</p>
@@ -378,6 +464,7 @@ export const DashboardModule: React.FC = () => {
 
       {/* Burn Chart */}
       <BurnChart />
+      </div>
     </div>
   );
 };

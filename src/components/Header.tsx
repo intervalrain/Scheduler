@@ -35,7 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center space-x-8">
             <h1 className="text-2xl font-bold text-foreground">Scheduler</h1>
             
-            <nav className={isDarkMode ? `flex space-x-1 text-white` : `flex space-x-1 text-black`}>
+            <nav className="flex space-x-1 text-foreground">
               {tabs.map((tab) => (
                 <Button
                   key={tab.id}
@@ -56,7 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
             </nav>
           </div>
 
-          <div className={isDarkMode ? `flex items-center space-x-2 text-white` : `flex items-center space-x-2 text-black`}>
+          <div className="flex items-center space-x-2 text-foreground">
             <Button
               variant="ghost"
               size="sm"

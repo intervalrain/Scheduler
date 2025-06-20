@@ -9,18 +9,25 @@ interface Panel {
   props?: any;
 }
 
+interface Separator {
+  type: 'separator';
+  label?: string;
+}
+
+type SidebarItem = Panel | Separator;
+
 interface GenericSidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   title: string;
-  panels: Panel[];
+  items: SidebarItem[];
 }
 
 export const GenericSidebar: React.FC<GenericSidebarProps> = ({
   isCollapsed,
   onToggleCollapse,
   title,
-  panels,
+  items,
 }) => {
   const { isDarkMode } = useUserContext();
 
@@ -48,16 +55,35 @@ export const GenericSidebar: React.FC<GenericSidebarProps> = ({
 
         {isCollapsed ? (
           <div className={isDarkMode ? `px-2 space-y-3 py-4 text-white` : `px-2 space-y-3 py-4`}>
-            {panels.map((panel, index) => (
-              <div key={index}>{panel.collapsed(panel.props)}</div>
-            ))}
+            {items.map((item, index) => {
+              if ('type' in item && item.type === 'separator') {
+                return (
+                  <div key={index} className="border-t border-border my-2" />
+                );
+              }
+              const panel = item as Panel;
+              return <div key={index}>{panel.collapsed(panel.props)}</div>;
+            })}
           </div>
         ) : (
           <div className="px-6 pb-6">
             <h2 className="text-2xl font-bold mb-6 text-foreground">{title}</h2>
-            {panels.map((panel, index) => (
-              <div key={index}>{panel.expanded(panel.props)}</div>
-            ))}
+            {items.map((item, index) => {
+              if ('type' in item && item.type === 'separator') {
+                return (
+                  <div key={index} className="my-6">
+                    <div className="border-t border-border" />
+                    {item.label && (
+                      <div className="text-sm text-muted-foreground mt-2 font-medium">
+                        {item.label}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              const panel = item as Panel;
+              return <div key={index}>{panel.expanded(panel.props)}</div>;
+            })}
           </div>
         )}
       </div>

@@ -41,6 +41,10 @@ interface DataContextType {
   getTasksByState: (state: KanbanState) => Task[];
   canMoveTaskToOngoing: (taskId: string) => boolean;
   getDependencyChain: (taskId: string) => string[];
+  
+  // Sprint helper functions
+  getCurrentSprintDates: () => { startDate: Date; endDate: Date } | null;
+  getRemainingSprintTime: () => string | null;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -67,20 +71,40 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sprint state
   const [currentSprint, setCurrentSprint] = useState<Sprint | null>(() => {
     const saved = localStorage.getItem("currentSprint");
-    return saved ? {
-      ...JSON.parse(saved),
-      startDate: new Date(JSON.parse(saved).startDate),
-      endDate: new Date(JSON.parse(saved).endDate)
-    } : null;
+    if (saved) {
+      try {
+        const sprintData = JSON.parse(saved);
+        // Handle both old and new format
+        if (sprintData.startDate) {
+          // Old format - convert to new format
+          return null; // Clear old format, user will need to reconfigure
+        } else {
+          // New format
+          return {
+            ...sprintData,
+            createdAt: new Date(sprintData.createdAt)
+          };
+        }
+      } catch {
+        return null;
+      }
+    }
+    return null;
   });
   
   const [sprints, setSprints] = useState<Sprint[]>(() => {
     const saved = localStorage.getItem("sprints");
-    return saved ? JSON.parse(saved).map((sprint: any) => ({
-      ...sprint,
-      startDate: new Date(sprint.startDate),
-      endDate: new Date(sprint.endDate)
-    })) : [];
+    if (saved) {
+      try {
+        return JSON.parse(saved).map((sprint: any) => ({
+          ...sprint,
+          createdAt: new Date(sprint.createdAt)
+        })).filter((sprint: any) => !sprint.startDate); // Filter out old format sprints
+      } catch {
+        return [];
+      }
+    }
+    return [];
   });
   
   // Work Area state
@@ -253,9 +277,60 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setBurnChartData(prev => [...prev, newPoint]);
   };
 
+  // SPRINT HELPER FUNCTIONS
+  const getCurrentSprintDates = (): { startDate: Date; endDate: Date } | null => {
+    if (!currentSprint) return null;
+
+    const now = new Date();
+    const { iterationWeeks, startDay, createdAt } = currentSprint;
+
+    // Find the first occurrence of the start day on or after the sprint creation date
+    const baseDate = new Date(createdAt);
+    const dayDiff = (startDay - baseDate.getDay() + 7) % 7;
+    const firstSprintStart = new Date(baseDate);
+    firstSprintStart.setDate(baseDate.getDate() + dayDiff);
+
+    // Calculate which iteration we're currently in
+    const daysSinceFirstSprint = Math.floor((now.getTime() - firstSprintStart.getTime()) / (1000 * 60 * 60 * 24));
+    const currentIteration = Math.floor(daysSinceFirstSprint / (iterationWeeks * 7));
+
+    // Calculate current sprint dates
+    const startDate = new Date(firstSprintStart);
+    startDate.setDate(firstSprintStart.getDate() + (currentIteration * iterationWeeks * 7));
+    
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + (iterationWeeks * 7) - 1);
+    endDate.setHours(23, 59, 59, 999);
+
+    return { startDate, endDate };
+  };
+
+  const getRemainingSprintTime = (): string | null => {
+    const sprintDates = getCurrentSprintDates();
+    if (!sprintDates) return null;
+
+    const now = new Date();
+    const { endDate } = sprintDates;
+    
+    if (now > endDate) return "Sprint 已結束";
+
+    const diffMs = endDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
+
+    if (diffDays > 1) {
+      return `剩餘 ${diffDays} 天`;
+    } else if (diffHours > 1) {
+      return `剩餘 ${diffHours} 小時`;
+    } else {
+      return "即將結束";
+    }
+  };
+
   // PROJECT HEALTH CALCULATION
   const calculateProjectHealth = (): ProjectHealth => {
-    if (!currentSprint) {
+    const sprintDates = getCurrentSprintDates();
+    if (!currentSprint || !sprintDates) {
       return {
         healthPercentage: 100,
         laggedHours: 0,
@@ -266,15 +341,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const now = new Date();
-    const sprintStart = currentSprint.startDate;
-    const sprintEnd = currentSprint.endDate;
+    const { endDate } = sprintDates;
     
-    const totalSprintDays = Math.ceil((sprintEnd.getTime() - sprintStart.getTime()) / (1000 * 60 * 60 * 24));
-    const elapsedDays = Math.ceil((now.getTime() - sprintStart.getTime()) / (1000 * 60 * 60 * 24));
-    const remainingDays = Math.max(0, totalSprintDays - elapsedDays);
+    // Calculate remaining working days
+    const remainingDays = Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
     
     const dailyWorkHours = currentSprint.workingHours.end - currentSprint.workingHours.start;
-    const availableHours = remainingDays * dailyWorkHours * currentSprint.workingDays.length / 7;
+    const workingDayRatio = currentSprint.workingDays.length / 7;
+    const availableHours = remainingDays * dailyWorkHours * workingDayRatio;
     
     const incompleteTasks = tasks.filter(task => task.state !== 'done');
     const totalRequiredHours = incompleteTasks.reduce((sum, task) => sum + task.workHours, 0);
@@ -298,13 +372,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Generate ideal burn chart points when sprint changes
   useEffect(() => {
     if (currentSprint) {
+      const sprintDates = getCurrentSprintDates();
+      if (!sprintDates) return;
+      
+      const { startDate, endDate } = sprintDates;
       const totalHours = tasks.reduce((sum, task) => sum + task.workHours, 0);
-      const sprintDuration = Math.ceil((currentSprint.endDate.getTime() - currentSprint.startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const sprintDuration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
       
       // Generate ideal burn line points
       const idealPoints: BurnChartPoint[] = [];
       for (let i = 0; i <= sprintDuration; i++) {
-        const date = new Date(currentSprint.startDate.getTime() + i * 24 * 60 * 60 * 1000);
+        const date = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
         const remainingHours = totalHours * (1 - i / sprintDuration);
         idealPoints.push({
           date,
@@ -316,7 +394,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Only add ideal points if burnChartData is empty
       setBurnChartData(prev => prev.length === 0 ? idealPoints : prev);
     }
-  }, [currentSprint, tasks]);
+  }, [currentSprint, tasks, getCurrentSprintDates]);
 
   // EFFECTS FOR PERSISTENCE
   useEffect(() => {
@@ -365,6 +443,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     getTasksByState,
     canMoveTaskToOngoing,
     getDependencyChain,
+    getCurrentSprintDates,
+    getRemainingSprintTime,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
