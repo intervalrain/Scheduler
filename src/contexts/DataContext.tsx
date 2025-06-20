@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Task, Sprint, ProjectHealth, KanbanState } from '../types';
 
 interface BurnChartPoint {
@@ -278,7 +278,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // SPRINT HELPER FUNCTIONS
-  const getCurrentSprintDates = (): { startDate: Date; endDate: Date } | null => {
+  const getCurrentSprintDates = useCallback((): { startDate: Date; endDate: Date } | null => {
     if (!currentSprint) return null;
 
     const now = new Date();
@@ -303,9 +303,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     endDate.setHours(23, 59, 59, 999);
 
     return { startDate, endDate };
-  };
+  }, [currentSprint]);
 
-  const getRemainingSprintTime = (): string | null => {
+  const getRemainingSprintTime = useCallback((): string | null => {
     const sprintDates = getCurrentSprintDates();
     if (!sprintDates) return null;
 
@@ -325,10 +325,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } else {
       return "即將結束";
     }
-  };
+  }, [getCurrentSprintDates]);
 
   // PROJECT HEALTH CALCULATION
-  const calculateProjectHealth = (): ProjectHealth => {
+  const calculateProjectHealth = useCallback((): ProjectHealth => {
     const sprintDates = getCurrentSprintDates();
     if (!currentSprint || !sprintDates) {
       return {
@@ -361,11 +361,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return {
       healthPercentage,
       laggedHours,
-      remainingHours: availableHours,
+      remainingHours: totalRequiredHours,
       totalRequiredHours,
       availableHours,
     };
-  };
+  }, [currentSprint, getCurrentSprintDates, tasks]);
 
   const projectHealth = calculateProjectHealth();
 

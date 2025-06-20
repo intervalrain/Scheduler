@@ -74,13 +74,13 @@ export const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) =
 
   const tabs = [
     { id: 'sprint', label: 'Sprint 設定', icon: '📋' },
-    { id: 'data', label: '資料管理', icon: '💾' },
+    // { id: 'data', label: '資料管理', icon: '💾' },
     { id: 'about', label: '關於', icon: 'ℹ️' },
   ];
 
   return (
-    <BaseModal isOpen={isOpen} onClose={onClose} className="max-w-4xl">
-      <div className="p-6">
+    <BaseModal isOpen={isOpen} onClose={onClose} className="max-w-4xl w-4xl h-[600px]">
+      <div className="p-6 h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-foreground">設定</h2>
           <Button variant="ghost" onClick={onClose}>
@@ -106,7 +106,7 @@ export const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) =
           ))}
         </div>
 
-        <div className="space-y-6">
+        <div className="flex-1 space-y-6 overflow-y-auto">
           {/* Sprint Settings Tab */}
           {activeTab === 'sprint' && (
             <Card>

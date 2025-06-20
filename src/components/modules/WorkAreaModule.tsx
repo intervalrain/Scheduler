@@ -30,6 +30,7 @@ export const WorkAreaModule: React.FC = () => {
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
+  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
 
   useEffect(() => {
     if (currentWorkTask) {
@@ -121,39 +122,44 @@ export const WorkAreaModule: React.FC = () => {
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      <GenericSidebar
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        title="工作區域"
-        items={items}
-      />
+      {!isPreviewFullscreen && (
+        <GenericSidebar
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          title="工作區域"
+          items={items}
+        />
+      )}
 
       {/* Work Area */}
-      <div className="flex-1 flex flex-col space-y-4 overflow-hidden p-4">
+      <div className={`flex-1 flex flex-col space-y-4 overflow-hidden ${isPreviewFullscreen ? 'p-0' : 'p-4'}`}>
         {currentWorkTask ? (
           <>
-            {/* Task Header */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold">{currentWorkTask.taskName}</h2>
-                    <p className="text-muted-foreground">{currentWorkTask.category} • {currentWorkTask.workHours}h</p>
+            {/* Task Header - hidden in fullscreen */}
+            {!isPreviewFullscreen && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold">{currentWorkTask.taskName}</h2>
+                      <p className="text-muted-foreground">{currentWorkTask.category} • {currentWorkTask.workHours}h</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold text-blue-600">{getCompletionPercentage()}%</div>
+                      <div className="text-sm text-muted-foreground">完成度</div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-3xl font-bold text-blue-600">{getCompletionPercentage()}%</div>
-                    <div className="text-sm text-muted-foreground">完成度</div>
-                  </div>
-                </div>
-                {currentWorkTask.description && (
-                  <p className="text-sm text-muted-foreground mt-2">{currentWorkTask.description}</p>
-                )}
-              </CardHeader>
-            </Card>
+                  {currentWorkTask.description && (
+                    <p className="text-sm text-muted-foreground mt-2">{currentWorkTask.description}</p>
+                  )}
+                </CardHeader>
+              </Card>
+            )}
 
-            <div className="flex-1 grid grid-cols-2 gap-4 overflow-hidden">
-              {/* Checklist */}
-              <Card className="flex flex-col">
+            <div className={`flex-1 ${isPreviewFullscreen ? 'flex' : 'grid grid-cols-2 gap-4'} overflow-hidden`}>
+              {/* Checklist - hidden in fullscreen */}
+              {!isPreviewFullscreen && (
+                <Card className="flex flex-col">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold flex items-center gap-2">
@@ -257,12 +263,14 @@ export const WorkAreaModule: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
+              )}
 
               {/* Markdown Notes */}
               <MarkdownEditor
                 value={markdownNotes}
                 onChange={setMarkdownNotes}
                 onSave={handleSaveNotes}
+                onFullscreenToggle={setIsPreviewFullscreen}
                 placeholder="在此處撰寫 Markdown 筆記..."
                 className="flex-1"
               />

@@ -12,7 +12,7 @@ import { SettingModal } from './components/SettingModal';
 const AppContent: React.FC = () => {
   const { isDarkMode } = useUserContext();
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('calendar');
 
   const renderModule = () => {
     switch (activeTab) {

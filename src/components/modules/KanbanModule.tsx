@@ -434,19 +434,27 @@ export const KanbanModule: React.FC = () => {
   const items = [
     {
       collapsed: () => (
-        <div className="text-center space-y-3">
+        <div className="text-center space-y-2">
           <div>
             <Columns3 className="w-6 h-6 mx-auto mb-1 text-blue-600" />
             <div className="text-xs font-medium text-blue-600">看板</div>
           </div>
-          <div className="space-y-2">
-            <div className="text-xs">
-              <div className="text-green-600 font-medium">{taskStats.done}</div>
-              <div className="text-xs text-muted-foreground">完成</div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-green-600 font-medium">{taskStats.done}</span>
+              <span className="text-xs text-muted-foreground">完成</span>
             </div>
-            <div className="text-xs">
-              <div className="text-blue-600 font-medium">{taskStats.ongoing}</div>
-              <div className="text-xs text-muted-foreground">進行</div>
+            <div className="flex justify-between text-xs">
+              <span className="text-blue-600 font-medium">{taskStats.ongoing}</span>
+              <span className="text-xs text-muted-foreground">進行</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-orange-600 font-medium">{taskStats.queueing}</span>
+              <span className="text-xs text-muted-foreground">排隊</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-gray-600 font-medium">{taskStats.pending}</span>
+              <span className="text-xs text-muted-foreground">未開始</span>
             </div>
           </div>
         </div>

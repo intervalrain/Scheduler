@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Card } from './ui/card';
-import { Eye, Edit, Save, Image, Upload } from 'lucide-react';
+import { Eye, Edit, Save, Image, Upload, Maximize2, Minimize2 } from 'lucide-react';
 
 interface MarkdownEditorProps {
   value: string;
@@ -10,6 +10,7 @@ interface MarkdownEditorProps {
   onSave?: () => void;
   placeholder?: string;
   className?: string;
+  onFullscreenToggle?: (isFullscreen: boolean) => void;
 }
 
 // Simple markdown renderer for basic formatting
@@ -57,15 +58,25 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   onChange,
   onSave,
   placeholder = "在此處撰寫 Markdown 筆記...",
-  className = ""
+  className = "",
+  onFullscreenToggle
 }) => {
   const [isPreview, setIsPreview] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const togglePreview = () => {
     setIsPreview(!isPreview);
+  };
+  
+  const toggleFullscreen = () => {
+    const newFullscreenState = !isFullscreen;
+    setIsFullscreen(newFullscreenState);
+    if (onFullscreenToggle) {
+      onFullscreenToggle(newFullscreenState);
+    }
   };
 
   // Convert file to base64
@@ -183,6 +194,20 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
                 <Image className="w-4 h-4 mr-1" />
               )}
               {isUploading ? '上傳中...' : '圖片'}
+            </Button>
+          )}
+          {isPreview && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleFullscreen}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="w-4 h-4 mr-1" />
+              ) : (
+                <Maximize2 className="w-4 h-4 mr-1" />
+              )}
+              {isFullscreen ? '退出全螢幕' : '全螢幕'}
             </Button>
           )}
         </div>

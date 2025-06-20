@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { GenericSidebar } from '../GenericSidebar';
-import { SprintCalendar } from '../SprintCalendar';
+import { Calendar } from '../Calendar';
 import { SprintInfoPanel } from '../SprintInfoPanel';
+import { SettingsPanel } from '../SettingsPanel';
 import { useUserContext } from '../../contexts/UserContext';
 
 interface CalendarModuleProps {
@@ -43,6 +44,18 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({ onSettingsClick 
         />
       ),
     },
+    {
+      type: 'separator' as const,
+      label: '時間設定'
+    },
+    {
+      collapsed: () => (
+        <SettingsPanel collapsed={true} />
+      ),
+      expanded: () => (
+        <SettingsPanel collapsed={false} />
+      ),
+    },
   ];
 
   return (
@@ -53,10 +66,12 @@ export const CalendarModule: React.FC<CalendarModuleProps> = ({ onSettingsClick 
         title="Sprint 行事曆"
         items={items}
       />
-      <SprintCalendar 
-        onSettingsClick={onSettingsClick} 
-        onStatsUpdate={handleStatsUpdate}
-      />
+      <div className="flex-1 overflow-hidden">
+        <Calendar 
+          onSettingsClick={onSettingsClick} 
+          onStatsUpdate={handleStatsUpdate}
+        />
+      </div>
     </div>
   );
 };

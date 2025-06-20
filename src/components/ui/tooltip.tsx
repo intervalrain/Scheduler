@@ -16,7 +16,6 @@ export const Tooltip: React.FC<TooltipProps> = ({ children, content, side = 'rig
   const updatePosition = () => {
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      console.log('Container rect:', rect);
       
       let top = 0;
       let left = 0;
@@ -46,7 +45,6 @@ export const Tooltip: React.FC<TooltipProps> = ({ children, content, side = 'rig
   };
 
   const showTooltip = () => {
-    console.log('Showing tooltip');
     if (hideTimeout) {
       clearTimeout(hideTimeout);
       setHideTimeout(null);
@@ -56,16 +54,13 @@ export const Tooltip: React.FC<TooltipProps> = ({ children, content, side = 'rig
   };
 
   const hideTooltip = () => {
-    console.log('Starting hide tooltip countdown');
     const timeout = setTimeout(() => {
-      console.log('Hiding tooltip');
       setIsVisible(false);
     }, 150);
     setHideTimeout(timeout);
   };
 
   const cancelHide = () => {
-    console.log('Canceling tooltip hide');
     if (hideTimeout) {
       clearTimeout(hideTimeout);
       setHideTimeout(null);
@@ -80,7 +75,7 @@ export const Tooltip: React.FC<TooltipProps> = ({ children, content, side = 'rig
     };
   }, [hideTimeout]);
 
-  console.log('Tooltip render:', { isVisible, hasContent: !!content });
+  // Tooltip render state tracking
 
   const tooltipContent = isVisible ? (
     <div 
