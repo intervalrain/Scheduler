@@ -110,11 +110,78 @@ export const WorkAreaModule: React.FC = () => {
     return marked(markdown) as string;
   };
 
+  const handleImagePaste = async (event: React.ClipboardEvent) => {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.indexOf('image') !== -1) {
+        event.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          const base64 = await convertToBase64(file);
+          const imageMarkdown = `![Image](${base64})`;
+          
+          const textarea = event.target as HTMLTextAreaElement;
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          const newText = markdownNotes.substring(0, start) + imageMarkdown + markdownNotes.substring(end);
+          
+          setMarkdownNotes(newText);
+          
+          setTimeout(() => {
+            textarea.setSelectionRange(start + imageMarkdown.length, start + imageMarkdown.length);
+          }, 0);
+        }
+        break;
+      }
+    }
+  };
+
+  const convertToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  const handleImageDrop = async (event: React.DragEvent) => {
+    event.preventDefault();
+    const files = event.dataTransfer?.files;
+    if (!files) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type.indexOf('image') !== -1) {
+        const base64 = await convertToBase64(file);
+        const imageMarkdown = `![${file.name}](${base64})`;
+        
+        const textarea = event.target as HTMLTextAreaElement;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const newText = markdownNotes.substring(0, start) + imageMarkdown + markdownNotes.substring(end);
+        
+        setMarkdownNotes(newText);
+        
+        setTimeout(() => {
+          textarea.setSelectionRange(start + imageMarkdown.length, start + imageMarkdown.length);
+        }, 0);
+      }
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+  };
+
   const ongoingTasks = getTasksByState('ongoing');
   const queueingTasks = getTasksByState('queueing');
 
   return (
-    <div className="flex-1 flex gap-4 p-4 overflow-hidden">
+    <div className="flex-1 flex gap-4 p-4 min-h-0">
       {/* Task Selection Sidebar */}
       {!isFullScreen && (
         <div className="w-80 flex flex-col">
@@ -166,7 +233,7 @@ export const WorkAreaModule: React.FC = () => {
       )}
 
       {/* Work Area */}
-      <div className="flex-1 flex flex-col space-y-4 overflow-hidden">
+      <div className="flex-1 flex flex-col space-y-4 min-h-0">
         {currentWorkTask ? (
           <>
             {/* Task Header */}
@@ -190,7 +257,7 @@ export const WorkAreaModule: React.FC = () => {
               </Card>
             )}
 
-            <div className={`flex-1 ${isFullScreen ? 'flex' : 'grid grid-cols-2'} gap-4 overflow-hidden`}>
+            <div className={`flex-1 ${isFullScreen ? 'flex' : 'grid grid-cols-2'} gap-4 min-h-0`}>
               {/* Checklist */}
               {!isFullScreen && (
                 <Card className="flex flex-col">
@@ -341,8 +408,11 @@ export const WorkAreaModule: React.FC = () => {
                     <Textarea
                       value={markdownNotes}
                       onChange={(e) => setMarkdownNotes(e.target.value)}
-                      placeholder="在此處撰寫 Markdown 筆記..."
-                      className="flex-1 resize-none border-0 rounded-none focus:ring-0"
+                      onPaste={handleImagePaste}
+                      onDrop={handleImageDrop}
+                      onDragOver={handleDragOver}
+                      placeholder="在此處撰寫 Markdown 筆記... (支援圖片貼上與拖拽)"
+                      className="flex-1 resize-none border-0 rounded-none focus:ring-0 overflow-y-auto"
                     />
                   )}
                 </CardContent>
