@@ -341,7 +341,7 @@ export const SettingModal: React.FC<SettingModalProps> = ({ isOpen, onClose }) =
   };
 
   return (
-    <BaseModal isOpen={isOpen} onClose={onClose} className="w-[800px] h-[1000px] max-w-none max-h-none">
+    <BaseModal isOpen={isOpen} onClose={onClose} className="w-[800px] h-[680px] max-w-none max-h-none">
       <div ref={modalRef} className="flex flex-col h-full p-6" tabIndex={-1}>
         {/* Header */}
         <div className="flex items-center justify-between mb-6 flex-shrink-0">
